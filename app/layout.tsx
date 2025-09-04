@@ -9,25 +9,27 @@ import { ThemeProvider } from "@/components/theme-provider"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Litsy - Frontend Developer",
-  description: "사용자 경험을 최우선으로 생각하는 프론트엔드 개발자 Litsy의 포트폴리오",
+  title: "LitsyNeko - 디스코드,웹 개발자",
+  description: "디스코드와 웹을 사랑하는 개발자 LitsyNeko의 포트폴리오",
   generator: "v0.app",
-  keywords: ["프론트엔드", "개발자", "React", "Next.js", "TypeScript", "웹개발", "포트폴리오"],
-  authors: [{ name: "Litsy", url: "https://github.com/litsyme" }],
-  creator: "Litsy",
+  keywords: ["디스코드", "웹개발", "프론트엔드", "개발자", "React", "Next.js", "TypeScript", "포트폴리오", "LitsyNeko"],
+  authors: [{ name: "LitsyNeko", url: "https://github.com/litsyme" }],
+  creator: "LitsyNeko",
   openGraph: {
     type: "website",
     locale: "ko_KR",
     url: "https://litsy.dev",
-    siteName: "Litsy Portfolio",
-    title: "Litsy - Frontend Developer",
-    description: "사용자 경험을 최우선으로 생각하는 프론트엔드 개발자 Litsy의 포트폴리오",
+    siteName: "LitsyNeko Portfolio",
+    title: "LitsyNeko - 디스코드,웹 개발자",
+    description: "디스코드와 웹을 사랑하는 개발자 LitsyNeko의 포트폴리오",
+    images: ["/siteimage.png"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Litsy - Frontend Developer",
-    description: "사용자 경험을 최우선으로 생각하는 프론트엔드 개발자 Litsy의 포트폴리오",
+    title: "LitsyNeko - 디스코드,웹 개발자",
+    description: "디스코드와 웹을 사랑하는 개발자 LitsyNeko의 포트폴리오",
     creator: "@litsyme",
+    images: ["/siteimage.png"],
   },
   robots: {
     index: true,

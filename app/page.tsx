@@ -240,8 +240,8 @@ export default function HomePage() {
                     <div className="w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-primary/20 to-secondary/20 p-2">
                       <div className="w-full h-full rounded-xl overflow-hidden bg-background/80 backdrop-blur-sm">
                         <Image
-                          src="/images/Mascoz_250903_221905.png"
-                          alt="Litsy - 하늘색 단발머리의 프론트엔드 개발자"
+                          src="/images/profile.png"
+                          alt="LitsyNeko 프로필"
                           width={400}
                           height={400}
                           className="w-full h-full object-cover hover:scale-110 transition-transform duration-700"

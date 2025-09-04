@@ -167,8 +167,8 @@ export default function AboutPage() {
                 <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-primary/20 to-secondary/20 p-1">
                   <div className="w-full h-full rounded-full overflow-hidden bg-background">
                     <Image
-                      src="/images/LN.png"
-                      alt="Litsy Avatar"
+                      src="/images/profile.png"
+                      alt="LitsyNeko Avatar"
                       width={128}
                       height={128}
                       className="w-full h-full object-cover"
