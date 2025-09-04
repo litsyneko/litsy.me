@@ -9,6 +9,7 @@ import { MdDesignServices } from "react-icons/md"
 import Link from "next/link"
 import Image from "next/image"
 import { motion, useMotionValue, useSpring, useTransform, useReducedMotion } from "framer-motion"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 function useDescriptionTypewriter(descriptions: string[], basePauseDuration = 3000, initialDelay = 0, fastModeAfterFirst = false) {
   const [displayText, setDisplayText] = useState("")
@@ -110,6 +111,7 @@ export default function HomePage() {
   const heroRef = useRef<HTMLDivElement>(null)
   const skillsRef = useRef<HTMLDivElement>(null)
   const shouldReduceMotion = useReducedMotion()
+  const isMobile = useIsMobile()
 
   const names = ["Litsy", "릿시", "リッシnEKO"]
   const { displayText: typedName, showCursor: nameShowCursor } = useDescriptionTypewriter(names, 1500, 0, true)
@@ -382,31 +384,41 @@ export default function HomePage() {
                     delay: shouldReduceMotion ? 0 : index * 0.1, 
                     duration: shouldReduceMotion ? 0.1 : 0.6 
                   }}
-                  whileHover={shouldReduceMotion ? {} : { scale: 1.05, y: -10 }}
+                  whileHover={shouldReduceMotion || isMobile ? {} : { scale: 1.05, y: -10 }}
                   className="group"
                   tabIndex={0}
                   role="article"
                   aria-label={`${tech.name} 기술 스택 정보`}
                 >
-                  <div className="relative bg-gradient-to-br from-background/60 via-background/40 to-background/60 backdrop-blur-xl rounded-2xl p-8 border border-white/20 dark:border-white/10 shadow-2xl hover:shadow-3xl transition-all duration-500 group-hover:border-white/30 dark:group-hover:border-white/20">
-                    {/* 3D 반투명 레이어 */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/5 to-white/10 dark:via-white/2 dark:to-white/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className={`relative ${
+                    isMobile 
+                      ? "bg-card/80 backdrop-blur-sm rounded-2xl p-6 border border-border shadow-lg hover:shadow-xl transition-all duration-300 hover:border-primary/30" 
+                      : "bg-gradient-to-br from-background/60 via-background/40 to-background/60 backdrop-blur-xl rounded-2xl p-8 border border-white/20 dark:border-white/10 shadow-2xl hover:shadow-3xl transition-all duration-500 group-hover:border-white/30 dark:group-hover:border-white/20"
+                  }`}>
+                    {/* 3D 반투명 레이어 - PC에서만 표시 */}
+                    {!isMobile && (
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/5 to-white/10 dark:via-white/2 dark:to-white/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      </>
+                    )}
                     
-                    {/* 글래스 이펙트 */}
-                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 via-white/5 to-transparent dark:from-white/5 dark:via-white/2 dark:to-transparent" />
+                    {/* 글래스 이펙트 - PC에서만 표시 */}
+                    {!isMobile && (
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 via-white/5 to-transparent dark:from-white/5 dark:via-white/2 dark:to-transparent" />
+                    )}
                     
                     {/* 아이콘 영역 */}
                     <motion.div 
-                      className="relative z-10 text-4xl mb-6 transition-all duration-500 transform-gpu filter drop-shadow-lg"
-                      whileHover={shouldReduceMotion ? {} : { scale: 1.1, y: -8 }}
+                      className={`relative z-10 text-4xl mb-6 transition-all duration-500 ${isMobile ? "filter-none" : "transform-gpu filter drop-shadow-lg"}`}
+                      whileHover={shouldReduceMotion || isMobile ? {} : { scale: 1.1, y: -8 }}
                     >
                       {tech.icon}
                     </motion.div>
                     
                     {/* 텍스트 영역 */}
                     <div className="relative z-10">
-                      <h3 className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors duration-300 drop-shadow-sm">
+                      <h3 className={`text-2xl font-bold mb-3 group-hover:text-primary transition-colors duration-300 ${isMobile ? "drop-shadow-none" : "drop-shadow-sm"}`}>
                         {tech.name}
                       </h3>
                       <p className="text-muted-foreground group-hover:text-foreground transition-colors duration-300 leading-relaxed">
@@ -414,9 +426,13 @@ export default function HomePage() {
                       </p>
                     </div>
                     
-                    {/* 하이라이트 효과 */}
-                    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    {/* 하이라이트 효과 - PC에서만 표시 */}
+                    {!isMobile && (
+                      <>
+                        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      </>
+                    )}
                   </div>
                 </motion.div>
               )
