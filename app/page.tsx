@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, ExternalLink, Sparkles, Code, Palette } from "lucide-react"
 import { FaReact, FaNodeJs, FaDiscord } from "react-icons/fa"
@@ -8,7 +8,7 @@ import { SiNextdotjs, SiTypescript } from "react-icons/si"
 import { MdDesignServices } from "react-icons/md"
 import Link from "next/link"
 import Image from "next/image"
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
+import { motion, useMotionValue, useSpring, useTransform, useReducedMotion } from "framer-motion"
 
 function useDescriptionTypewriter(descriptions: string[], basePauseDuration = 3000, initialDelay = 0, fastModeAfterFirst = false) {
   const [displayText, setDisplayText] = useState("")
@@ -19,30 +19,46 @@ function useDescriptionTypewriter(descriptions: string[], basePauseDuration = 30
   const [isWaiting, setIsWaiting] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
   const [cycleCount, setCycleCount] = useState(0)
+  const shouldReduceMotion = useReducedMotion()
 
+  // 커서 깜빡임 최적화 - reduced motion일 때는 더 느리게
   useEffect(() => {
+    if (shouldReduceMotion) {
+      // reduced motion일 때는 커서를 항상 표시
+      setShowCursor(true)
+      return
+    }
+
     const cursorInterval = setInterval(() => {
       setShowCursor((prev) => !prev)
     }, 500)
 
     return () => clearInterval(cursorInterval)
-  }, [])
+  }, [shouldReduceMotion])
 
   useEffect(() => {
     if (initialDelay > 0 && !hasStarted) {
       const delayTimer = setTimeout(() => {
         setHasStarted(true)
-      }, initialDelay)
+      }, shouldReduceMotion ? 0 : initialDelay) // reduced motion일 때는 딜레이 없음
       return () => clearTimeout(delayTimer)
     } else if (initialDelay === 0) {
       setHasStarted(true)
     }
-  }, [initialDelay, hasStarted])
+  }, [initialDelay, hasStarted, shouldReduceMotion])
 
   useEffect(() => {
     if (!hasStarted || isWaiting) return
 
     const currentDesc = descriptions[descIndex]
+    
+    // reduced motion일 때는 애니메이션 없이 바로 텍스트 표시
+    if (shouldReduceMotion) {
+      setDisplayText(currentDesc)
+      setCurrentIndex(currentDesc.length)
+      return
+    }
+    
     // 첫 번째 사이클 후에는 더 빠르게
     const speedMultiplier = fastModeAfterFirst && cycleCount > 0 ? 0.5 : 1
     const baseSpeed = Math.max(30, Math.min(120, 2000 / currentDesc.length)) * speedMultiplier
@@ -84,16 +100,16 @@ function useDescriptionTypewriter(descriptions: string[], basePauseDuration = 30
     }, isDeleting ? deleteSpeed : baseSpeed)
 
     return () => clearTimeout(timeout)
-  }, [currentIndex, descIndex, isDeleting, descriptions, basePauseDuration, isWaiting, hasStarted, cycleCount, fastModeAfterFirst])
+  }, [currentIndex, descIndex, isDeleting, descriptions, basePauseDuration, isWaiting, hasStarted, cycleCount, fastModeAfterFirst, shouldReduceMotion])
 
   return { displayText, showCursor }
 }
 
 export default function HomePage() {
   const [isVisible, setIsVisible] = useState(false)
-  const [globalMousePosition, setGlobalMousePosition] = useState({ x: 0, y: 0 })
   const heroRef = useRef<HTMLDivElement>(null)
   const skillsRef = useRef<HTMLDivElement>(null)
+  const shouldReduceMotion = useReducedMotion()
 
   const names = ["Litsy", "릿시", "リッシnEKO"]
   const { displayText: typedName, showCursor: nameShowCursor } = useDescriptionTypewriter(names, 1500, 0, true)
@@ -106,21 +122,6 @@ export default function HomePage() {
 
   useEffect(() => {
     setIsVisible(true)
-  }, [])
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (skillsRef.current) {
-        const rect = skillsRef.current.getBoundingClientRect()
-        setGlobalMousePosition({
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top
-        })
-      }
-    }
-
-    document.addEventListener('mousemove', handleMouseMove)
-    return () => document.removeEventListener('mousemove', handleMouseMove)
   }, [])
 
   return (
@@ -182,7 +183,10 @@ export default function HomePage() {
 
                 <div className="flex flex-col sm:flex-row gap-4 mb-16">
                   <Link href="/projects">
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <motion.div 
+                      whileHover={shouldReduceMotion ? {} : { scale: 1.05 }} 
+                      whileTap={shouldReduceMotion ? {} : { scale: 0.95 }}
+                    >
                       <Button
                         size="lg"
                         className="btn-modern px-8 py-4 text-lg font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
@@ -193,7 +197,10 @@ export default function HomePage() {
                     </motion.div>
                   </Link>
                   <Link href="/contact">
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <motion.div 
+                      whileHover={shouldReduceMotion ? {} : { scale: 1.02 }} 
+                      whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+                    >
                       <Button
                         variant="outline"
                         size="lg"
@@ -212,7 +219,11 @@ export default function HomePage() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
+                transition={{ 
+                  duration: shouldReduceMotion ? 0.1 : 1, 
+                  ease: "easeOut", 
+                  delay: shouldReduceMotion ? 0 : 0.3 
+                }}
                 className="relative"
               >
                 <div className="relative w-80 h-80 md:w-96 md:h-96">
@@ -227,11 +238,11 @@ export default function HomePage() {
                   {/* Main profile container */}
                   <motion.div
                     className="relative w-full h-full glass-effect rounded-3xl p-8 hover-lift"
-                    animate={{
+                    animate={shouldReduceMotion ? {} : {
                       y: [0, -10, 0],
                       rotate: [0, 2, -2, 0],
                     }}
-                    transition={{
+                    transition={shouldReduceMotion ? {} : {
                       repeat: Number.POSITIVE_INFINITY,
                       duration: 4,
                       ease: "easeInOut",
@@ -283,8 +294,8 @@ export default function HomePage() {
           <Link href="/about" className="group">
             <motion.div
               className="flex flex-col items-center glass-effect rounded-full p-4 hover-glow"
-              animate={{ y: [0, -8, 0] }}
-              transition={{ repeat: Number.POSITIVE_INFINITY, duration: 3, ease: "easeInOut" }}
+              animate={shouldReduceMotion ? {} : { y: [0, -8, 0] }}
+              transition={shouldReduceMotion ? {} : { repeat: Number.POSITIVE_INFINITY, duration: 3, ease: "easeInOut" }}
             >
               <span className="text-sm text-muted-foreground mb-2 group-hover:text-primary transition-colors">
                 더 알아보기
@@ -345,7 +356,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ perspective: "1000px" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { name: "React", desc: "컴포넌트 기반 UI 개발", icon: <FaReact className="text-blue-500" /> },
               {
@@ -362,148 +373,22 @@ export default function HomePage() {
                 icon: <MdDesignServices className="text-pink-600" />,
               },
             ].map((tech, index) => {
-              const cardRef = useRef<HTMLDivElement>(null)
-              const [isDirectHover, setIsDirectHover] = useState(false)
-              const x = useMotionValue(0)
-              const y = useMotionValue(0)
-
-              const mouseXSpring = useSpring(x)
-              const mouseYSpring = useSpring(y)
-
-              const rotateX = useTransform(mouseYSpring, [-1, 1], ["25deg", "-25deg"])
-              const rotateY = useTransform(mouseXSpring, [-1, 1], ["-25deg", "25deg"])
-
-              useEffect(() => {
-                // 직접 호버 중이면 전역 감지 무시
-                if (isDirectHover) return
-                
-                if (cardRef.current) {
-                  const rect = cardRef.current.getBoundingClientRect()
-                  const skillsRect = skillsRef.current?.getBoundingClientRect()
-                  
-                  if (skillsRect) {
-                    // 카드의 전역 위치 계산
-                    const cardCenterX = rect.left + rect.width / 2 - skillsRect.left
-                    const cardCenterY = rect.top + rect.height / 2 - skillsRect.top
-                    
-                    // 마우스와 카드 중심 간의 거리 계산
-                    const deltaX = globalMousePosition.x - cardCenterX
-                    const deltaY = globalMousePosition.y - cardCenterY
-                    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-                    
-                    // 영향 범위를 더 크게 설정하여 카드 사이에서도 효과가 나타나도록
-                    const maxDistance = 250
-                    
-                    if (distance < maxDistance) {
-                      // 거리에 따른 강도 계산 - 더 부드러운 감소
-                      const intensity = 1 - (distance / maxDistance)
-                      
-                      // 최소 강도 임계값을 낮춰서 더 민감하게 반응
-                      if (intensity > 0.05) {
-                        // 카드 경계를 고려한 더 정확한 위치 계산
-                        const normalizedX = deltaX / (rect.width / 2)
-                        const normalizedY = deltaY / (rect.height / 2)
-                        
-                        const xPct = normalizedX * intensity * 0.8 // 전역 효과 강도 대폭 증가
-                        const yPct = normalizedY * intensity * 0.8
-                        
-                        x.set(Math.max(-1, Math.min(1, xPct))) // 전역 효과 범위를 직접 호버와 동일하게
-                        y.set(Math.max(-1, Math.min(1, yPct)))
-                      } else {
-                        x.set(0)
-                        y.set(0)
-                      }
-                    } else {
-                      // 범위 밖이면 원래 위치로
-                      x.set(0)
-                      y.set(0)
-                    }
-                  }
-                }
-              }, [globalMousePosition.x, globalMousePosition.y, isDirectHover])
-
-              const handleMouseEnter = () => {
-                setIsDirectHover(true)
-              }
-
-              const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-                const rect = event.currentTarget.getBoundingClientRect()
-                const width = rect.width
-                const height = rect.height
-                const mouseX = event.clientX - rect.left
-                const mouseY = event.clientY - rect.top
-                
-                // 카드 경계를 고려한 정확한 위치 계산
-                const xPct = (mouseX / width - 0.5) * 2 // -1 ~ 1 범위로 확장
-                const yPct = (mouseY / height - 0.5) * 2 // -1 ~ 1 범위로 확장
-                
-                x.set(Math.max(-1, Math.min(1, xPct)))
-                y.set(Math.max(-1, Math.min(1, yPct)))
-              }
-
-              const handleMouseLeave = () => {
-                setIsDirectHover(false)
-                // 즉시 전역 효과로 전환하여 부드러운 연결
-                setTimeout(() => {
-                  if (cardRef.current) {
-                    const rect = cardRef.current.getBoundingClientRect()
-                    const skillsRect = skillsRef.current?.getBoundingClientRect()
-                    
-                    if (skillsRect) {
-                      const cardCenterX = rect.left + rect.width / 2 - skillsRect.left
-                      const cardCenterY = rect.top + rect.height / 2 - skillsRect.top
-                      
-                      const deltaX = globalMousePosition.x - cardCenterX
-                      const deltaY = globalMousePosition.y - cardCenterY
-                      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-                      
-                      // 카드를 벗어났지만 여전히 영향권 내에 있다면 부드럽게 전환
-                      if (distance < 250) {
-                        const intensity = 1 - (distance / 250)
-                        if (intensity > 0.05) {
-                          const normalizedX = deltaX / (rect.width / 2)
-                          const normalizedY = deltaY / (rect.height / 2)
-                          
-                          const xPct = normalizedX * intensity * 0.8 // 동일한 강도로 일관성 유지
-                          const yPct = normalizedY * intensity * 0.8
-                          
-                          x.set(Math.max(-1, Math.min(1, xPct))) // 동일한 범위로 일관성 유지
-                          y.set(Math.max(-1, Math.min(1, yPct)))
-                        }
-                      } else {
-                        x.set(0)
-                        y.set(0)
-                      }
-                    }
-                  }
-                }, 50) // 짧은 지연으로 부드러운 전환
-              }
-
               return (
                 <motion.div
                   key={tech.name}
-                  ref={cardRef}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1, duration: 0.6 }}
-                  whileHover={{ scale: 1.05, y: -10 }}
-                  onMouseEnter={handleMouseEnter}
-                  onMouseMove={handleMouseMove}
-                  onMouseLeave={handleMouseLeave}
-                  style={{
-                    rotateY: rotateY,
-                    rotateX: rotateX,
-                    transformStyle: "preserve-3d",
-                    perspective: 1000,
+                  transition={{ 
+                    delay: shouldReduceMotion ? 0 : index * 0.1, 
+                    duration: shouldReduceMotion ? 0.1 : 0.6 
                   }}
+                  whileHover={shouldReduceMotion ? {} : { scale: 1.05, y: -10 }}
                   className="group"
                   tabIndex={0}
                   role="article"
                   aria-label={`${tech.name} 기술 스택 정보`}
-                  onFocus={handleMouseEnter}
-                  onBlur={handleMouseLeave}
                 >
-                  <div className="relative bg-gradient-to-br from-background/60 via-background/40 to-background/60 backdrop-blur-xl rounded-2xl p-8 border border-white/20 dark:border-white/10 shadow-2xl hover:shadow-3xl transition-all duration-500 group-hover:border-white/30 dark:group-hover:border-white/20" style={{ transformStyle: "preserve-3d" }}>
+                  <div className="relative bg-gradient-to-br from-background/60 via-background/40 to-background/60 backdrop-blur-xl rounded-2xl p-8 border border-white/20 dark:border-white/10 shadow-2xl hover:shadow-3xl transition-all duration-500 group-hover:border-white/30 dark:group-hover:border-white/20">
                     {/* 3D 반투명 레이어 */}
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/5 to-white/10 dark:via-white/2 dark:to-white/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -514,7 +399,7 @@ export default function HomePage() {
                     {/* 아이콘 영역 */}
                     <motion.div 
                       className="relative z-10 text-4xl mb-6 transition-all duration-500 transform-gpu filter drop-shadow-lg"
-                      whileHover={{ scale: 1.1, y: -8 }}
+                      whileHover={shouldReduceMotion ? {} : { scale: 1.1, y: -8 }}
                     >
                       {tech.icon}
                     </motion.div>
@@ -540,7 +425,7 @@ export default function HomePage() {
 
           <div className="text-center mt-20">
             <motion.div
-              whileHover={{ scale: 1.02 }}
+              whileHover={shouldReduceMotion ? {} : { scale: 1.02 }}
               className="bg-gradient-to-br from-primary/10 via-blue-500/10 to-purple-500/10 backdrop-blur-sm rounded-2xl p-12 max-w-3xl mx-auto border border-primary/20 hover:border-primary/40 shadow-xl hover:shadow-2xl transition-all duration-300"
             >
               <h3 className="text-3xl md:text-4xl font-bold mb-6 bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">
@@ -550,7 +435,10 @@ export default function HomePage() {
                 새로운 아이디어를 현실로 만들어드립니다.
               </p>
               <Link href="/contact">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <motion.div 
+                  whileHover={shouldReduceMotion ? {} : { scale: 1.05 }} 
+                  whileTap={shouldReduceMotion ? {} : { scale: 0.95 }}
+                >
                   <Button
                     size="lg"
                     className="px-8 py-3 text-lg bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 shadow-lg hover:shadow-xl transition-all duration-300"
