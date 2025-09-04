@@ -4,6 +4,22 @@ Litsy.me is a Next.js 15 personal portfolio website built with TypeScript, Tailw
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
+## Language Guidelines
+
+### Korean Language Usage
+- **Respond in Korean when:**
+  - Working with Korean content in the codebase (the site contains substantial Korean text)
+  - Responding to comments or issues written in Korean
+  - User explicitly requests Korean communication
+- **Preserve Korean content:**
+  - Do NOT translate existing Korean text unless explicitly requested
+  - Respect Korean text in components, pages, and content files
+  - Korean text includes unescaped quotes which are expected and documented as non-blocking lint issues
+- **Default to English for:**
+  - Technical documentation and code comments
+  - Git commit messages and PR descriptions
+  - Error messages and debugging output
+
 ## Working Effectively
 
 ### Prerequisites and Setup
