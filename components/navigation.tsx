@@ -8,6 +8,7 @@ import { Menu, X, Github, Mail } from "lucide-react"
 import { FaXTwitter } from "react-icons/fa6"
 import { motion, AnimatePresence } from "framer-motion"
 import { ThemeToggle } from "@/components/theme-toggle"
+import AuthButton from "@/components/auth-button"
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
@@ -87,6 +88,7 @@ export default function Navigation() {
 
           <div className="hidden md:flex items-center space-x-2">
             <ThemeToggle />
+            <AuthButton />
             <motion.a
               href="https://github.com/litsyme"
               target="_blank"
