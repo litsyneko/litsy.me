@@ -192,18 +192,16 @@ export default function HomePage() {
                       </Button>
                     </motion.div>
                   </Link>
-                  <Link href="/contact">
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        className="px-8 py-4 text-lg rounded-2xl glass-effect hover:bg-primary/10 transition-all duration-300 bg-transparent"
-                      >
-                        <Palette className="w-5 h-5 mr-2" />
-                        연락하기
-                      </Button>
-                    </motion.div>
-                  </Link>
+                    <Link href="/contact">
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button
+                          size="lg"
+                          className="px-8 py-3 text-lg bg-gradient-to-r from-primary to-blue-600 text-white rounded-2xl shadow-2xl hover:from-primary/90 hover:to-blue-600/90 ring-1 ring-primary/20 transition-all duration-300"
+                        >
+                          프로젝트 문의하기
+                        </Button>
+                      </motion.div>
+                    </Link>
                 </div>
               </div>
             </div>
@@ -553,7 +551,7 @@ export default function HomePage() {
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
                     size="lg"
-                    className="px-8 py-3 text-lg bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="px-8 py-3 text-lg text-white bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 shadow-lg hover:shadow-xl transition-all duration-300"
                   >
                     프로젝트 문의하기
                   </Button>

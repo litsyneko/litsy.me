@@ -4,19 +4,20 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  /* Slightly toned-down light theme to reduce harshness */
+  --background: oklch(0.965 0 0);
+  --foreground: oklch(0.13 0 0);
+  --card: oklch(0.985 0 0);
+  --card-foreground: oklch(0.13 0 0);
+  --popover: oklch(0.985 0 0);
+  --popover-foreground: oklch(0.13 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
+  --secondary: oklch(0.94 0 0);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
+  --muted: oklch(0.94 0 0);
+  --muted-foreground: oklch(0.52 0 0);
+  --accent: oklch(0.94 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
@@ -121,5 +122,58 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* 부드러운 다크/라이트 전환: 배경/텍스트 색상 전환을 적용합니다 */
+    transition: background-color 300ms ease, color 300ms ease;
+  }
+
+  /* 주요 UI 요소에 부드러운 전환을 적용하되, 접근성 설정(prefers-reduced-motion)을 존중합니다 */
+  @media (prefers-reduced-motion: no-preference) {
+    .glass-effect,
+    .gradient-text,
+    button,
+    a,
+    input,
+    textarea,
+    select,
+    .rounded-2xl,
+    .rounded-3xl,
+    .card,
+    .btn-modern,
+    .hover-glow,
+    .hover-lift {
+      transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease, box-shadow 300ms ease, transform 250ms ease;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glass-effect,
+    .gradient-text,
+    button,
+    a,
+    input,
+    textarea,
+    select,
+    .rounded-2xl,
+    .rounded-3xl,
+    .card,
+    .btn-modern,
+    .hover-glow,
+    .hover-lift {
+      transition: none !important;
+      animation-duration: 0s !important;
+      animation-delay: 0s !important;
+    }
+  }
+
+  /* Theme transition 활성화 클래스: 토글 시에만 잠깐 적용됩니다 */
+  .theme-transition body,
+  .theme-transition .glass-effect,
+  .theme-transition .gradient-text,
+  .theme-transition button,
+  .theme-transition a,
+  .theme-transition input,
+  .theme-transition textarea,
+  .theme-transition select {
+    transition: background-color 320ms ease, color 320ms ease, border-color 320ms ease, box-shadow 320ms ease;
   }
 }

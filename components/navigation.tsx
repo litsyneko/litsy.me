@@ -2,37 +2,132 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Menu, X, Github, Mail } from "lucide-react"
+import { Menu, X, Github, Mail, User, LogOut, Settings } from "lucide-react"
 import { FaXTwitter } from "react-icons/fa6"
 import { motion, AnimatePresence } from "framer-motion"
 import { ThemeToggle } from "@/components/theme-toggle"
-import AuthButton from "@/components/auth-button"
+import { useAuth } from "@/hooks/useAuth"
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, loading, signOut, getUserDisplayName, getUserAvatar } = useAuth()
 
   const navItems = [
     { name: "Home", href: "/" },
     { name: "About", href: "/about" },
     { name: "Projects", href: "/projects" },
+    { name: "Blog", href: "/blog" },
     { name: "Contact", href: "/contact" },
   ]
 
-  const isActive = (href: string) => pathname === href
+  const isActive = (href: string) => {
+    if (!pathname) return false
+    return pathname === href
+  }
 
   // 모바일 메뉴 닫기 (pathname 변경 시)
   useEffect(() => {
     setIsOpen(false)
   }, [pathname])
 
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      router.push('/')
+    } catch (error) {
+      console.error('Sign out error:', error)
+    }
+  }
+
+  const getUserInitials = (email: string) => {
+    return email.charAt(0).toUpperCase()
+  }
+
+  // AuthContext에서 제공하는 유틸리티 함수 사용
+
+  const AuthButton = ({ isMobile = false }: { isMobile?: boolean }) => {
+    if (loading) {
+      return (
+        <div className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} animate-pulse rounded-full bg-muted`} />
+      )
+    }
+
+    if (user) {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+              <Avatar className="h-10 w-10">
+                <AvatarImage 
+                  src={getUserAvatar() || undefined} 
+                  alt={getUserDisplayName()}
+                />
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {getUserInitials(user?.email || '')}
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <div className="flex items-center justify-start gap-2 p-2">
+              <div className="flex flex-col space-y-1 leading-none">
+                <p className="font-medium">{getUserDisplayName()}</p>
+                <p className="w-[200px] truncate text-sm text-muted-foreground">
+                  {user?.email}
+                </p>
+              </div>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => router.push('/profile')}>
+              <User className="mr-2 h-4 w-4" />
+              <span>프로필</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>설정</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>로그아웃</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    }
+
+    return (
+      <motion.div
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ duration: 0.12, ease: "easeOut" }}
+      >
+        <Button asChild size={isMobile ? "sm" : "default"} className="relative overflow-hidden">
+          <Link href="/auth">
+            <span className="relative z-10">로그인</span>
+          </Link>
+        </Button>
+      </motion.div>
+    )
+  }
+
   return (
     <motion.nav
-      initial={{ y: -100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
       className="fixed inset-x-0 top-0 z-50"
     >
       <div className="w-full px-4 bg-background/90 backdrop-blur-xl border-b border-primary/20">
@@ -53,15 +148,15 @@ export default function Navigation() {
             {navItems.map((item, index) => (
               <motion.div
                 key={item.name}
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ 
-                  delay: index * 0.1 + 0.3, 
-                  duration: 0.4,
+                  delay: index * 0.08 + 0.15, 
+                  duration: 0.25,
                   ease: "easeOut"
                 }}
-                whileHover={{ y: -2 }}
-                whileTap={{ y: 0 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
                 <Link
                   href={item.href}
@@ -88,15 +183,14 @@ export default function Navigation() {
 
           <div className="hidden md:flex items-center space-x-2">
             <ThemeToggle />
-            <AuthButton />
             <motion.a
               href="https://github.com/litsyme"
               target="_blank"
               rel="noopener noreferrer"
-              whileHover={{ scale: 1.1, y: -2 }}
+              whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              className="p-2.5 text-muted-foreground hover:text-foreground transition-all duration-300 hover:bg-muted/30 dark:hover:bg-muted/20 rounded-xl hover:shadow-sm"
+              transition={{ duration: 0.12, ease: "easeOut" }}
+              className="p-2.5 text-muted-foreground hover:text-foreground transition-all duration-200 hover:bg-muted/30 dark:hover:bg-muted/20 rounded-xl"
               aria-label="GitHub"
             >
               <Github className="w-5 h-5" />
@@ -105,24 +199,25 @@ export default function Navigation() {
               href="https://x.com/litsyme"
               target="_blank"
               rel="noopener noreferrer"
-              whileHover={{ scale: 1.1, y: -2 }}
+              whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              className="p-2.5 text-muted-foreground hover:text-foreground transition-all duration-300 hover:bg-muted/30 dark:hover:bg-muted/20 rounded-xl hover:shadow-sm"
+              transition={{ duration: 0.12, ease: "easeOut" }}
+              className="p-2.5 text-muted-foreground hover:text-foreground transition-all duration-200 hover:bg-muted/30 dark:hover:bg-muted/20 rounded-xl"
               aria-label="Twitter"
             >
               <FaXTwitter className="w-5 h-5" />
             </motion.a>
             <motion.a
               href="mailto:litsy.dev@gmail.com"
-              whileHover={{ scale: 1.1, y: -2 }}
+              whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              className="p-2.5 text-muted-foreground hover:text-foreground transition-all duration-300 hover:bg-muted/30 dark:hover:bg-muted/20 rounded-xl hover:shadow-sm"
+              transition={{ duration: 0.12, ease: "easeOut" }}
+              className="p-2.5 text-muted-foreground hover:text-foreground transition-all duration-200 hover:bg-muted/30 dark:hover:bg-muted/20 rounded-xl"
               aria-label="Email"
             >
               <Mail className="w-5 h-5" />
             </motion.a>
+            <AuthButton />
           </div>
 
           <motion.div 
@@ -180,15 +275,17 @@ export default function Navigation() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05, duration: 0.2 }}
                   >
-                    <Link
-                      href={item.href}
-                      className={`block text-sm font-medium transition-all duration-300 px-3 py-2 rounded-lg hover:bg-muted/40 dark:hover:bg-muted/25 hover:translate-x-1 ${
-                        isActive(item.href) ? "text-primary bg-muted/40 dark:bg-muted/25" : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      onClick={() => setIsOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
+                    <motion.div whileTap={{ scale: 0.98 }}>
+                      <Link
+                        href={item.href}
+                        className={`block text-sm font-medium transition-all duration-200 px-3 py-2 rounded-lg hover:bg-muted/40 dark:hover:bg-muted/25 ${
+                          isActive(item.href) ? "text-primary bg-muted/40 dark:bg-muted/25" : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {item.name}
+                      </Link>
+                    </motion.div>
                   </motion.div>
                 ))}
 
@@ -199,6 +296,7 @@ export default function Navigation() {
                   className="flex items-center space-x-3 px-2 pt-3 border-t border-primary/20"
                 >
                   <ThemeToggle />
+                  <AuthButton isMobile={true} />
                   <a
                     href="https://github.com/litsyme"
                     target="_blank"

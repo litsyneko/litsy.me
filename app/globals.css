@@ -1,22 +1,23 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "react-image-crop/dist/ReactCrop.css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Modern color palette with warm gradients and softer tones */
-  --background: #fafafa;
-  --foreground: #1a1a1a;
+  /* Modern color palette with improved contrast for better readability */
+  --background: #ffffff;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #1a1a1a;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #1a1a1a;
+  --popover-foreground: #0f172a;
   --primary: #6366f1;
   --primary-foreground: #ffffff;
   --secondary: #8b5cf6;
   --secondary-foreground: #ffffff;
   --muted: #f1f5f9;
-  --muted-foreground: #64748b;
+  --muted-foreground: #475569;
   --accent: #06b6d4;
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
@@ -31,7 +32,7 @@
   --chart-5: #f59e0b;
   --radius: 1rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #1a1a1a;
+  --sidebar-foreground: #0f172a;
   --sidebar-primary: #6366f1;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #8b5cf6;
@@ -129,6 +130,24 @@
 
   html {
     scroll-behavior: smooth;
+  }
+
+  /* Touch-friendly interface optimizations */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  @media (min-width: 640px) {
+    .touch-target {
+      min-height: 36px;
+      min-width: 36px;
+    }
+  }
+
+  /* Ensure adequate spacing between interactive elements */
+  .touch-spacing > * + * {
+    margin-left: 8px;
   }
 
   /* Respect user's motion preferences */
@@ -415,4 +434,55 @@
     0 25px 50px -12px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(255, 255, 255, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+/* Touch Interface Utilities */
+.touch-friendly {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 12px;
+}
+
+@media (min-width: 640px) {
+  .touch-friendly {
+    min-height: 36px;
+    min-width: 36px;
+    padding: 8px;
+  }
+}
+
+.touch-area {
+  padding: 12px;
+  margin: 4px;
+}
+
+@media (min-width: 640px) {
+  .touch-area {
+    padding: 8px;
+    margin: 2px;
+  }
+}
+
+/* Improved focus states for accessibility */
+.focus-visible:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+/* Better hover states for touch devices */
+@media (hover: hover) {
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+  
+  .hover-scale:hover {
+    transform: scale(1.02);
+  }
+}
+
+/* Prevent hover states on touch devices */
+@media (hover: none) {
+  .hover-lift:hover,
+  .hover-scale:hover {
+    transform: none;
+  }
 }
