@@ -1,8 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
-import { validateClientEnvVars } from './utils/env'
 
 // 환경 변수 검증
-validateClientEnvVars()
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_URL')
+}
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY')
+}
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -140,6 +144,73 @@ export type Database = {
           updated_at?: string
         }
       }
+      users: {
+        Row: {
+          id: string
+          username: string | null
+          display_name: string | null
+          avatar_url: string | null
+          bio: string | null
+          website: string | null
+          location: string | null
+          email: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          username?: string | null
+          display_name?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          website?: string | null
+          location?: string | null
+          email: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          username?: string | null
+          display_name?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          website?: string | null
+          location?: string | null
+          email?: string
+          updated_at?: string
+        }
+      }
+    }
+    Functions: {
+      get_user_profile: {
+        Args: {
+          user_id: string
+        }
+        Returns: {
+          id: string
+          username: string | null
+          display_name: string | null
+          avatar_url: string | null
+          bio: string | null
+          website: string | null
+          location: string | null
+          email: string
+          created_at: string
+          updated_at: string
+        }
+      }
+      update_user_profile: {
+        Args: {
+          user_id: string
+          new_username: string | null
+          new_display_name: string | null
+          new_avatar_url: string | null
+          new_bio: string | null
+          new_website: string | null
+          new_location: string | null
+        }
+        Returns: boolean
+      }
     }
   }
 }
@@ -229,19 +300,37 @@ export interface ProfileUpdateData {
   location?: string
 }
 
-// 프로필 관련 함수들
+// 프로필 관련 함수들 - 단순화된 버전 (RPC 함수 대신 직접 테이블 접근)
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   try {
-    const { data, error } = await supabase
-      .rpc('get_user_profile', { user_id: userId })
-      .single()
+    // auth.users에서 직접 사용자 정보 가져오기
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (error) {
-      console.error('Error fetching user profile:', error)
+    if (authError || !user || user.id !== userId) {
       return null
     }
 
-    return data
+    // public.users 테이블에서 추가 정보 가져오기 (있는 경우)
+    const { data: publicUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    const publicUserData = publicUser as Database['public']['Tables']['users']['Row'] | null
+
+    return {
+      id: user.id,
+      username: publicUserData?.username || user.user_metadata?.username || null,
+      display_name: publicUserData?.display_name || user.user_metadata?.display_name || user.user_metadata?.full_name || null,
+      avatar_url: publicUserData?.avatar_url || user.user_metadata?.avatar_url || null,
+      bio: publicUserData?.bio || user.user_metadata?.bio || null,
+      website: publicUserData?.website || user.user_metadata?.website || null,
+      location: publicUserData?.location || user.user_metadata?.location || null,
+      email: user.email || '',
+      created_at: user.created_at,
+      updated_at: user.updated_at || user.created_at
+    }
   } catch (error) {
     console.error('Error fetching user profile:', error)
     return null
@@ -250,23 +339,40 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 
 export async function updateUserProfile(userId: string, updates: ProfileUpdateData): Promise<boolean> {
   try {
-    const { data, error } = await supabase
-      .rpc('update_user_profile', {
-        user_id: userId,
-        new_username: updates.username || null,
-        new_display_name: updates.display_name || null,
-        new_avatar_url: updates.avatar_url || null,
-        new_bio: updates.bio || null,
-        new_website: updates.website || null,
-        new_location: updates.location || null
-      })
+    // auth.users 메타데이터 업데이트
+    const { error: authError } = await supabase.auth.updateUser({
+      data: {
+        ...updates,
+        updated_at: new Date().toISOString()
+      }
+    })
 
-    if (error) {
-      console.error('Error updating user profile:', error)
+    if (authError) {
+      console.error('Error updating auth user:', authError)
       return false
     }
 
-    return data === true
+    // public.users 테이블 업데이트 (있는 경우)
+    const { error: publicError } = await supabase
+      .from('users')
+      .upsert({
+        id: userId,
+        username: updates.username || null,
+        display_name: updates.display_name || null,
+        avatar_url: updates.avatar_url || null,
+        bio: updates.bio || null,
+        website: updates.website || null,
+        location: updates.location || null,
+        email: '', // 기본값 제공
+        updated_at: new Date().toISOString()
+      })
+
+    if (publicError) {
+      console.warn('Error updating public user profile:', publicError)
+      // public.users 업데이트 실패는 치명적이지 않음
+    }
+
+    return true
   } catch (error) {
     console.error('Error updating user profile:', error)
     return false

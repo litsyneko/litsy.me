@@ -13,6 +13,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ImageUpload from "@/components/image-upload"
+import PasswordChangeWithVerification from "@/components/auth/PasswordChangeWithVerification"
+import AccountDeletion from "@/components/auth/AccountDeletion"
 import { 
   User, 
   Mail, 
@@ -25,6 +27,12 @@ import {
   Save
 } from "lucide-react"
 import { motion } from "framer-motion"
+import { 
+  updateUserProfile, 
+  getUserProfileData, 
+  calculateProfileCompleteness,
+  checkUsernameAvailability 
+} from "@/lib/utils/profile-management"
 
 export default function ProfilePage() {
   const { user, loading, refreshUser } = useAuth()
@@ -34,6 +42,7 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState(user?.user_metadata?.avatar_url || "")
   const [updating, setUpdating] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [profileCompleteness, setProfileCompleteness] = useState({ percentage: 0, missingFields: [] as string[] })
 
   // 사용자 정보가 변경될 때 state 업데이트
   useEffect(() => {
@@ -41,6 +50,10 @@ export default function ProfilePage() {
       setNickname(user.user_metadata?.nickname || user.user_metadata?.name || "")
       setUsername(user.user_metadata?.username || "")
       setAvatarUrl(user.user_metadata?.avatar_url || "")
+      
+      // 프로필 완성도 계산
+      const completeness = calculateProfileCompleteness(user)
+      setProfileCompleteness(completeness)
     }
   }, [user])
 
@@ -99,20 +112,18 @@ export default function ProfilePage() {
     setMessage(null)
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          nickname: nickname.trim() || null,
-          username: username.trim() || null,
-          avatar_url: avatarUrl || null
-        }
+      const result = await updateUserProfile({
+        nickname: nickname.trim() || undefined,
+        username: username.trim() || undefined,
+        avatar_url: avatarUrl || undefined
       })
 
-      if (error) {
-        setMessage({ type: 'error', text: error.message })
+      if (result.success) {
+        // refresh local auth state
+        await refreshUser()
+        setMessage({ type: 'success', text: result.message })
       } else {
-  // refresh local auth state
-  await refreshUser()
-  setMessage({ type: 'success', text: '프로필을 업데이트했습니다.' })
+        setMessage({ type: 'error', text: result.message })
       }
     } catch (err) {
       setMessage({ type: 'error', text: '프로필 업데이트 중 오류가 발생했습니다.' })
@@ -314,17 +325,19 @@ export default function ProfilePage() {
                 <CardHeader>
                   <CardTitle>비밀번호 변경</CardTitle>
                   <CardDescription>
-                    보안을 위해 정기적으로 비밀번호를 변경하세요
+                    보안을 위해 정기적으로 비밀번호를 변경하세요. 이메일 인증이 필요합니다.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => router.push('/auth/reset-password')}
-                  >
-                    <Shield className="h-4 w-4 mr-2" />
-                    비밀번호 재설정
-                  </Button>
+                  {isDiscordAccount ? (
+                    <div className="p-4 bg-muted/50 rounded-lg border">
+                      <p className="text-sm text-muted-foreground">
+                        Discord 계정은 Discord에서 비밀번호를 관리합니다.
+                      </p>
+                    </div>
+                  ) : (
+                    <PasswordChangeWithVerification />
+                  )}
                 </CardContent>
               </Card>
 
@@ -343,9 +356,7 @@ export default function ProfilePage() {
                     <p className="text-sm text-red-600 dark:text-red-300 mb-4">
                       계정과 모든 데이터가 영구적으로 삭제됩니다.
                     </p>
-                    <Button variant="destructive" size="sm">
-                      계정 삭제
-                    </Button>
+                    <AccountDeletion />
                   </div>
                 </CardContent>
               </Card>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -15,9 +15,9 @@ import { useSignInForm } from '@/hooks/useAuthForm'
 import { useGuestGuard } from '@/hooks/useAuthGuard'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
-import { getPostLoginRedirectPath } from '@/lib/utils/auth'
+import { getPostLoginRedirectPath } from '@/lib/utils/validation'
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { signInWithOAuth } = useAuth()
@@ -251,5 +251,17 @@ export default function LoginPage() {
         </Card>
       </motion.div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   )
 }

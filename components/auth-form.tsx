@@ -326,18 +326,28 @@ export default function AuthForm({
     setMessage(null)
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/auth/reset-password`
-      })
+      // 개선된 비밀번호 재설정 함수 사용
+      const { sendPasswordResetEmail } = await import('@/lib/utils/password-reset')
+      const result = await sendPasswordResetEmail(email.trim())
 
-      if (error) {
-        setMessage({ type: 'error', text: error.message })
-      } else {
+      if (result.success) {
         setMessage({ 
           type: 'success', 
-          text: '비밀번호 재설정 이메일을 보냈습니다. 이메일을 확인하세요.' 
+          text: result.message
         })
         setEmail('')
+      } else {
+        let errorText = result.message
+        
+        // 재시도 가능 시간이 있는 경우 추가 정보 표시
+        if (result.canRetryAt) {
+          const waitMinutes = Math.ceil((result.canRetryAt.getTime() - Date.now()) / (1000 * 60))
+          if (waitMinutes > 0) {
+            errorText += ` (${waitMinutes}분 후 재시도 가능)`
+          }
+        }
+        
+        setMessage({ type: 'error', text: errorText })
       }
     } catch (err) {
       setMessage({ type: 'error', text: '비밀번호 재설정 중 오류가 발생했습니다.' })

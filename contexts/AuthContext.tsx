@@ -188,28 +188,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // 비밀번호 재설정
+  // 비밀번호 재설정 (개선된 버전)
   const resetPassword = async (email: string): Promise<AuthResponse> => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`
-      })
-
-      if (error) {
+      const { sendPasswordResetEmail } = await import('@/lib/utils/password-reset')
+      const result = await sendPasswordResetEmail(email)
+      
+      if (result.success) {
+        return {
+          success: true,
+          message: result.message
+        }
+      } else {
         return {
           success: false,
-          error: getAuthErrorMessage(error)
+          error: result.message,
+          retryAt: result.canRetryAt
         }
-      }
-
-      return {
-        success: true,
-        message: '비밀번호 재설정 링크를 이메일로 발송했습니다.'
       }
     } catch (error) {
       return {
         success: false,
-        error: getAuthErrorMessage(error as Error)
+        error: '비밀번호 재설정 요청 중 오류가 발생했습니다.'
+      }
+    }
+  }
+
+  // 비밀번호 변경 (이메일 인증 필요)
+  const changePassword = async (newPassword: string): Promise<AuthResponse> => {
+    try {
+      const { requestPasswordChangeWithEmailVerification } = await import('@/lib/utils/password-change-verification')
+      const result = await requestPasswordChangeWithEmailVerification(newPassword)
+      
+      if (result.success) {
+        return {
+          success: true,
+          message: result.message
+        }
+      } else {
+        return {
+          success: false,
+          error: result.message
+        }
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: '비밀번호 변경 요청 중 오류가 발생했습니다.'
       }
     }
   }
@@ -283,6 +308,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const refreshProfile = async (): Promise<void> => {
+    try {
+      if (user) {
+        const userProfile = await getCurrentUserProfile()
+        setProfile(userProfile)
+      }
+    } catch (error) {
+      console.error('Profile refresh error:', error)
+    }
+  }
+
   // 초기 세션 확인 및 인증 상태 변경 리스너 설정
   useEffect(() => {
     // 현재 세션 확인
@@ -304,18 +340,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextType = {
     user,
     session,
+    profile,
     loading,
     signUp,
     signIn,
     signInWithOAuth,
     signOut,
     resetPassword,
+    changePassword,
     resendConfirmation,
     getUserDisplayName: getUserDisplayNameFromContext,
     getUserAvatar: getUserAvatarFromContext,
     isEmailVerified: isEmailVerifiedFromContext,
     refreshSession,
-    refreshUser
+    refreshUser,
+    refreshProfile
   }
 
   return (

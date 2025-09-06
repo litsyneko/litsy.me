@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from './useAuth'
 import { SignUpData, SignInData, ResetPasswordData, AuthResponse } from '@/lib/types/auth'
-import { isValidEmail, isValidPassword, isValidUsername, isValidDisplayName } from '@/lib/utils/auth'
+import { isValidEmail, isValidPassword, isValidUsername, isValidDisplayName } from '@/lib/utils/validation'
 
 /**
  * 회원가입 폼 관리 훅

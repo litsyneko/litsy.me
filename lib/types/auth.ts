@@ -11,6 +11,7 @@ export interface AuthContextType {
   signInWithOAuth: (provider: 'discord', redirectTo?: string) => Promise<AuthResponse>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<AuthResponse>
+  changePassword: (newPassword: string) => Promise<AuthResponse>
   resendConfirmation: (email: string) => Promise<AuthResponse>
   
   // 유틸리티 함수들
@@ -26,6 +27,7 @@ export interface AuthResponse {
   success: boolean
   error?: string
   message?: string
+  retryAt?: Date
 }
 
 export interface SignUpData {
