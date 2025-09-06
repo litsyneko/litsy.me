@@ -6,19 +6,35 @@ import Link from 'next/link'
 import BlogList from './BlogList'
 import { NormalizedPost } from '@/lib/types/blog'
 import { normalizePost, getTagColor } from '@/lib/utils/blog'
-import { checkBlogWritePermission, hasWritePermission, type BlogAuthUser } from '@/lib/utils/blog-auth'
+// import { checkBlogWritePermission, hasWritePermission, type BlogAuthUser } from '@/lib/utils/blog-auth' // 제거
+import { BlogPostWithAuthor } from '@/lib/services/blog' // BlogPostWithAuthor 타입 가져오기
+import type { UserProfile } from '@/lib/supabase' // UserProfile 타입 가져오기
+
+interface BlogAuthStatus {
+  hasPermission: boolean;
+  user: UserProfile | null; // UserProfile 타입 사용
+  error: string | null;
+}
 
 // 기본(샘플) 포스트 데이터
-const DEFAULT_POSTS: NormalizedPost[] = [
+const DEFAULT_POSTS: BlogPostWithAuthor[] = [
   {
     slug: 'nextjs-blog-tutorial',
     title: 'Next.js 블로그 튜토리얼',
     summary: 'Next.js로 블로그를 만드는 방법을 단계별로 설명합니다.',
     date: '2025-09-01T00:00:00Z',
     tags: ['Next.js', 'React', '블로그'],
-    author: 'Litsy',
-    username: 'litsy25',
-    cover: '/placeholder.jpg'
+    author_id: 'anonymous-author-id', // 임시 ID
+    author_username: 'Litsy',
+    author_display_name: 'Litsy',
+    author_avatar: '/placeholder.jpg',
+    content: 'Next.js로 블로그를 만드는 방법을 단계별로 설명합니다.',
+    cover_url: '/placeholder.jpg',
+    published: true,
+    published_at: '2025-09-01T00:00:00Z',
+    created_at: '2025-09-01T00:00:00Z',
+    updated_at: '2025-09-01T00:00:00Z',
+    id: 'nextjs-blog-tutorial-id',
   },
   {
     slug: 'supabase-auth-guide',
@@ -26,34 +42,42 @@ const DEFAULT_POSTS: NormalizedPost[] = [
     summary: 'Supabase로 소셜 로그인과 이메일 인증을 구현하는 방법을 알아봅시다.',
     date: '2025-08-20T00:00:00Z',
     tags: ['Supabase', '인증', '보안'],
-    author: 'Litsy',
-    username: 'litsy25',
-    cover: '/placeholder-user.jpg'
+    author_id: 'anonymous-author-id-2', // 임시 ID
+    author_username: 'Litsy',
+    author_display_name: 'Litsy',
+    author_avatar: '/placeholder-user.jpg',
+    content: 'Supabase로 소셜 로그인과 이메일 인증을 구현하는 방법을 알아봅시다.',
+    cover_url: '/placeholder-user.jpg',
+    published: true,
+    published_at: '2025-08-20T00:00:00Z',
+    created_at: '2025-08-20T00:00:00Z',
+    updated_at: '2025-08-20T00:00:00Z',
+    id: 'supabase-auth-guide-id',
   }
 ]
 
 interface BlogHomeProps {
-  initialPosts?: NormalizedPost[]
+  initialPosts?: BlogPostWithAuthor[] // NormalizedPost -> BlogPostWithAuthor
 }
 
-function useFiltered(posts: NormalizedPost[], query: string, tag: string) {
+function useFiltered(posts: BlogPostWithAuthor[], query: string, tag: string) { // NormalizedPost -> BlogPostWithAuthor
   return useMemo(() => {
     let filtered = posts
 
     if (tag) {
-      filtered = filtered.filter(post => post.tags.includes(tag))
+      filtered = filtered.filter(post => post.tags && post.tags.includes(tag))
     }
 
     if (query) {
       const searchTerm = query.toLowerCase()
       filtered = filtered.filter(post =>
         post.title.toLowerCase().includes(searchTerm) ||
-        post.summary.toLowerCase().includes(searchTerm) ||
-        post.tags.some(t => t.toLowerCase().includes(searchTerm))
+        post.summary?.toLowerCase().includes(searchTerm) ||
+        post.tags?.some(t => t.toLowerCase().includes(searchTerm))
       )
     }
 
-    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    return filtered.sort((a, b) => new Date(b.published_at || b.created_at || '').getTime() - new Date(a.published_at || a.created_at || '').getTime())
   }, [posts, query, tag])
 }
 
@@ -61,58 +85,60 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
   const [query, setQuery] = useState('')
   const [tag, setTag] = useState('')
   const [page, setPage] = useState(1)
-  const [posts, setPosts] = useState<NormalizedPost[]>(initialPosts || DEFAULT_POSTS)
-  const [loading, setLoading] = useState(!initialPosts)
+  const [posts, setPosts] = useState<BlogPostWithAuthor[]>(initialPosts || DEFAULT_POSTS) // NormalizedPost -> BlogPostWithAuthor
+  const [loading, setLoading] = useState(initialPosts === undefined)
   const [error, setError] = useState<string | null>(null)
-  const [authUser, setAuthUser] = useState<BlogAuthUser | null>(null)
+  const [authStatus, setAuthStatus] = useState<BlogAuthStatus>({ hasPermission: false, user: null, error: null }) // authUser -> authStatus
   const [authLoading, setAuthLoading] = useState(true)
 
   const perPage = 6
 
-  // 사용자 권한 확인
-  const checkAuth = useCallback(async () => {
+  // 사용자 권한 확인 및 포스트 불러오기
+  const fetchAuthAndPosts = useCallback(async () => {
+    console.log("fetchAuthAndPosts called");
     try {
       setAuthLoading(true)
-      const user = await checkBlogWritePermission()
-      setAuthUser(user)
-    } catch (error) {
-      console.error('Error checking auth:', error)
-    } finally {
-      setAuthLoading(false)
-    }
-  }, [])
 
-  const fetchPosts = useCallback(async () => {
-    if (initialPosts) return // SSR로 받은 데이터가 있으면 스킵
+      // API 라우트에서 권한 상태 가져오기
+      const authResponse = await fetch('/api/auth/status')
+      const authData: BlogAuthStatus = await authResponse.json()
+      setAuthStatus(authData)
+      console.log("Auth Status:", authData);
 
-    try {
-      setLoading(true)
-      setError(null)
-
-      const response = await fetch('/api/posts?published=true')
-      if (!response.ok) {
-        throw new Error(`Failed to fetch posts: ${response.status}`)
+      if (initialPosts !== undefined) {
+        console.log("Initial posts present, setting posts state and skipping client-side fetch.");
+        setPosts(initialPosts); // SSR로 받은 데이터로 posts 상태 초기화
+        setLoading(false); // 로딩 상태 해제
+        return;
       }
 
-      const data = await response.json()
-      const normalizedPosts = Array.isArray(data)
-        ? data.map(normalizePost)
-        : DEFAULT_POSTS
+      // initialPosts가 없는 경우에만 클라이언트에서 포스트 불러오기 (현재는 이 경로를 타지 않아야 함)
+      console.log("Fetching posts from /api/posts?published=true (fallback/client-side)");
+      const postsResponse = await fetch('/api/posts?published=true')
+      if (!postsResponse.ok) {
+        throw new Error(`Failed to fetch posts: ${postsResponse.status}`)
+      }
+      const postsText = await postsResponse.text();
+      console.log("Posts Raw Text received:", postsText);
+      const postsData: BlogPostWithAuthor[] = JSON.parse(postsText); 
+      console.log("Posts Data received:", postsData);
+      setPosts(postsData)
 
-      setPosts(normalizedPosts)
     } catch (err) {
-      console.error('Error fetching posts:', err)
+      console.error('Error fetching auth status or posts:', err)
       setError(err instanceof Error ? err.message : 'Failed to load posts')
       setPosts(DEFAULT_POSTS) // 폴백으로 기본 포스트 사용
     } finally {
-      setLoading(false)
+      // setLoading(false) // initialPosts 처리 로직에서 이미 호출됨
+      setAuthLoading(false)
+      console.log("Loading finished. Current posts state (might be stale due to closure):", posts);
+      console.log("Loading finished. Final loading state:", false);
     }
   }, [initialPosts])
 
   useEffect(() => {
-    fetchPosts()
-    checkAuth()
-  }, [fetchPosts, checkAuth])
+    fetchAuthAndPosts()
+  }, [fetchAuthAndPosts])
 
   const filtered = useFiltered(posts, query, tag)
   const total = filtered.length
@@ -126,7 +152,7 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
   }, [page, pages])
 
   const visible = filtered.slice((page - 1) * perPage, page * perPage)
-  const allTags = Array.from(new Set(posts.flatMap(post => post.tags)))
+  const allTags = Array.from(new Set(posts.flatMap(post => post.tags || [])))
 
   const handleSearch = (value: string) => {
     setQuery(value)
@@ -145,7 +171,7 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
   }
 
   const handleRetry = () => {
-    fetchPosts()
+    fetchAuthAndPosts()
   }
 
   if (loading) {
@@ -169,7 +195,7 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
 
           {/* 글쓰기 버튼 */}
           {!authLoading && (
-            hasWritePermission(authUser) ? (
+            authStatus.hasPermission ? ( // authStatus.hasPermission 사용
               <Link
                 href="/blog/new"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
@@ -177,7 +203,7 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
                 <Plus className="w-4 h-4" />
                 글쓰기
               </Link>
-            ) : authUser ? (
+            ) : authStatus.user ? ( // authStatus.user 사용
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted text-muted-foreground rounded-lg text-sm">
                 <Lock className="w-4 h-4" />
                 권한 없음
@@ -199,15 +225,15 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
         </p>
 
         {/* 권한 정보 표시 */}
-        {!authLoading && authUser && (
+        {!authLoading && authStatus.user && ( // authStatus.user 사용
           <div className="mt-3 text-xs text-muted-foreground">
-            {hasWritePermission(authUser) ? (
+            {authStatus.hasPermission ? ( // authStatus.hasPermission 사용
               <span className="text-green-600 dark:text-green-400">
-                ✓ {authUser.discord_username || authUser.discord_id}님, 블로그 작성 권한이 있습니다.
+                ✓ {authStatus.user.display_name || authStatus.user.username || authStatus.user.email}님, 블로그 작성 권한이 있습니다. // authStatus.user 사용
               </span>
             ) : (
               <span className="text-amber-600 dark:text-amber-400">
-                ⚠ 블로그 작성 권한이 없습니다. (현재: {authUser.discord_username || authUser.discord_id || '알 수 없음'})
+                ⚠ 블로그 작성 권한이 없습니다. (현재: {authStatus.user.display_name || authStatus.user.username || authStatus.user.email || '알 수 없음'}) // authStatus.user 사용
               </span>
             )}
           </div>

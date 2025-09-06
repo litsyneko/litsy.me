@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -16,7 +16,16 @@ import { useGuestGuard } from '@/hooks/useAuthGuard'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 
-export default function SignUpPage() {
+
+function SignUpPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
+      <SignUpPageContent />
+    </Suspense>
+  )
+}
+
+function SignUpPageContent() {
   const router = useRouter()
   const { signInWithOAuth } = useAuth()
   const { isGuest, loading: authLoading } = useGuestGuard()
@@ -295,3 +304,5 @@ export default function SignUpPage() {
     </div>
   )
 }
+
+export default SignUpPage

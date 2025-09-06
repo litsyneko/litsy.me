@@ -4,21 +4,27 @@ import { useEffect, useState } from 'react'
 
 interface Comment {
   id: string
-  text: string
-  createdAt: string
+  author_name: string
+  author_avatar?: string | null
+  content: string
+  created_at: string
 }
 
 export default function CommentList({ slug }: { slug: string }) {
   const [comments, setComments] = useState<Comment[]>([])
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`comments:${slug}`)
-      const arr = raw ? JSON.parse(raw) : []
-      setComments(arr)
-    } catch (e) {
-      // ignore
+    const fetchComments = async () => {
+      try {
+        const res = await fetch(`/api/comments?post_id=${slug}`)
+        if (!res.ok) throw new Error('댓글 로딩 실패')
+        const data: Comment[] = await res.json()
+        setComments(data)
+      } catch (e) {
+        // ignore
+      }
     }
+    fetchComments()
   }, [slug])
 
   if (comments.length === 0) {
@@ -29,8 +35,14 @@ export default function CommentList({ slug }: { slug: string }) {
     <div className="space-y-3">
       {comments.map(c => (
         <div key={c.id} className="p-3 bg-card rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">{new Date(c.createdAt).toLocaleString()}</div>
-          <div className="text-sm">{c.text}</div>
+          <div className="flex items-center mb-2">
+            {c.author_avatar && (
+              <img src={c.author_avatar} alt={c.author_name} className="w-6 h-6 rounded-full mr-2" />
+            )}
+            <span className="text-sm font-semibold">{c.author_name}</span>
+            <span className="text-xs text-muted-foreground ml-2">{new Date(c.created_at).toLocaleString()}</span>
+          </div>
+          <div className="text-sm">{c.content}</div>
         </div>
       ))}
     </div>

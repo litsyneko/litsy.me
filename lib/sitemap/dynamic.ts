@@ -1,7 +1,7 @@
 import { SitemapEntry } from './types'
 import { SITEMAP_CONFIG } from './config'
 import { filterValidEntries, logSitemapError, formatSitemapDate, sanitizeSlug } from './utils'
-import { supabase } from '@/lib/supabase'
+import { supabaseServiceRole as supabase } from '@/lib/supabase-server'
 
 /**
  * 블로그 포스트들의 sitemap URL을 생성합니다

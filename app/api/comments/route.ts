@@ -1,75 +1,145 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getDiscordUsername } from '@/lib/discord'
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const postId = searchParams.get('post_id')
-  if (!postId) return NextResponse.json({ error: 'post_id required' }, { status: 400 })
-  // use admin client to join with users table for latest author metadata
-  const { data, error } = await supabaseAdmin
-    .from('comments')
-    .select(`*, users:users(id, username, display_name, avatar)`)
-    .eq('post_id', postId)
-    .order('created_at', { ascending: true })
-
-  if (error) return NextResponse.json({ error }, { status: 500 })
-
-  // Normalize: if users is an array, take first element
-  const normalized = (data || []).map((row: any) => {
-    const u = (row.users && row.users[0]) || null
-  const rawName = row.author_name || (u && (u.display_name || u.username)) || 'Anonymous'
-  // sanitize name: strip discord discriminator and avoid email
-  let authorName = typeof rawName === 'string' ? getDiscordUsername(rawName) || rawName : rawName
-  if (typeof authorName === 'string' && authorName.includes('@') && authorName.includes('.')) authorName = 'Anonymous'
-
-    return {
-      id: row.id,
-      post_id: row.post_id,
-      author_id: row.author_id || (u && u.id) || null,
-      author_name: authorName,
-      author_avatar: row.author_avatar || (u && u.avatar) || null,
-      content: row.content,
-      created_at: row.created_at,
+  try {
+    const { searchParams } = new URL(request.url)
+    const postId = searchParams.get('post_id')
+    
+    if (!postId) {
+      return NextResponse.json({ 
+        error: 'post_id is required',
+        field: 'post_id'
+      }, { status: 400 })
     }
-  })
 
-  return NextResponse.json(normalized)
+    // 데이터베이스 함수를 사용하여 작성자 정보와 함께 댓글 조회
+    const { data, error } = await supabaseAdmin.rpc('get_comments_with_authors', {
+      post_id_param: postId
+    })
+
+    if (error) {
+      console.error('Database error fetching comments:', error)
+      return NextResponse.json({ 
+        error: 'Failed to fetch comments',
+        details: error.message
+      }, { status: 500 })
+    }
+
+    // 결과 정규화
+    const normalized = (data || []).map((row: any) => {
+      const rawName = row.author_name || 'Anonymous'
+      // sanitize name: strip discord discriminator and avoid email
+      let authorName = typeof rawName === 'string' ? getDiscordUsername(rawName) || rawName : rawName
+      if (typeof authorName === 'string' && authorName.includes('@') && authorName.includes('.')) authorName = 'Anonymous'
+
+      return {
+        id: row.id,
+        post_id: row.post_id,
+        author_id: row.author_id,
+        author_name: authorName,
+        author_avatar: row.author_avatar,
+        content: row.content,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        author_username: row.author_username
+      }
+    })
+
+    return NextResponse.json(normalized)
+  } catch (error) {
+    console.error('GET /api/comments error:', error)
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
 }
 
 export async function POST(request: Request) {
-  const body = await request.json()
-  const { post_id, author_name, author_avatar, content } = body
-  if (!post_id || !content) return NextResponse.json({ error: 'post_id and content required' }, { status: 400 })
-  // If client provided an author id (from sync), prefer that and write via admin client
-  const author_id = (body.author_id) || null
-  const row: any = { post_id, author_name, author_avatar, content }
-  if (author_id) row.author_id = author_id
+  try {
+    const body = await request.json()
+    const { post_id, author_name, author_avatar, content } = body
+    
+    // 필수 필드 검증
+    if (!post_id || !content) {
+      return NextResponse.json({ 
+        error: 'post_id and content are required',
+        field: !post_id ? 'post_id' : 'content'
+      }, { status: 400 })
+    }
 
-  // write with admin client to ensure author_id and constraints are enforced
-  const { data, error } = await supabaseAdmin.from('comments').insert([row]).select()
-  if (error) return NextResponse.json({ error }, { status: 500 })
+    // 내용 길이 검증
+    if (content.trim().length < 1) {
+      return NextResponse.json({ 
+        error: 'Content cannot be empty',
+        field: 'content'
+      }, { status: 400 })
+    }
 
-  // return inserted rows normalized with author info from users table
-  const inserted = Array.isArray(data) ? data[0] : data
-  const { data: userRows } = await supabaseAdmin.from('users').select('*').eq('id', inserted.author_id).limit(1)
-  const user = (userRows && userRows[0]) || null
-  const result = {
-    id: inserted.id,
-    post_id: inserted.post_id,
-    author_id: inserted.author_id || (user && user.id) || null,
-    author_name: inserted.author_name || (user && (user.display_name || user.username)) || 'Anonymous',
-    author_avatar: inserted.author_avatar || (user && user.avatar) || null,
-    content: inserted.content,
-    created_at: inserted.created_at,
+    if (content.trim().length > 1000) {
+      return NextResponse.json({ 
+        error: 'Content must be 1000 characters or less',
+        field: 'content'
+      }, { status: 400 })
+    }
+
+    // 작성자 이름 검증
+    if (author_name && author_name.trim().length > 50) {
+      return NextResponse.json({ 
+        error: 'Author name must be 50 characters or less',
+        field: 'author_name'
+      }, { status: 400 })
+    }
+
+    // If client provided an author id (from sync), prefer that and write via admin client
+    const author_id = (body.author_id) || null
+    const row: any = { 
+      post_id, 
+      author_name: author_name?.trim() || 'Anonymous', 
+      author_avatar, 
+      content: content.trim() 
+    }
+    if (author_id) row.author_id = author_id
+
+    // write with admin client to ensure author_id and constraints are enforced
+    const { data, error } = await supabaseAdmin.from('comments').insert([row]).select()
+    if (error) {
+      console.error('Database error creating comment:', error)
+      return NextResponse.json({ 
+        error: 'Failed to create comment',
+        details: error.message
+      }, { status: 500 })
+    }
+
+    // return inserted rows normalized with author info from users table
+    const inserted = Array.isArray(data) ? data[0] : data
+    const { data: userRows } = await supabaseAdmin.from('users').select('*').eq('id', inserted.author_id).limit(1)
+    const user = (userRows && userRows[0]) || null
+    const result = {
+      id: inserted.id,
+      post_id: inserted.post_id,
+      author_id: inserted.author_id || (user && user.id) || null,
+      author_name: inserted.author_name || (user && (user.display_name || user.username)) || 'Anonymous',
+      author_avatar: inserted.author_avatar || (user && user.avatar) || null,
+      content: inserted.content,
+      created_at: inserted.created_at,
+    }
+
+    // sanitize name using centralized helper
+    if (typeof result.author_name === 'string') {
+      const maybe = getDiscordUsername(result.author_name) || result.author_name
+      result.author_name = (typeof maybe === 'string' && maybe.includes('@') && maybe.includes('.')) ? 'Anonymous' : maybe
+    }
+
+    return NextResponse.json(result, { status: 201 })
+  } catch (error) {
+    console.error('POST /api/comments error:', error)
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
-
-  // sanitize name using centralized helper
-  if (typeof result.author_name === 'string') {
-    const maybe = getDiscordUsername(result.author_name) || result.author_name
-    result.author_name = (typeof maybe === 'string' && maybe.includes('@') && maybe.includes('.')) ? 'Anonymous' : maybe
-  }
-
-  return NextResponse.json(result)
 }

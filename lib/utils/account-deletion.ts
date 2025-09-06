@@ -49,7 +49,7 @@ export async function requestAccountDeletion(): Promise<AccountDeletionRequest> 
   }
 }
 
-// OTP 코드로 계정 삭제 확인 - 단순화된 버전
+// OTP 코드로 계정 삭제 확인 - RPC 호출로 변경
 export async function confirmAccountDeletion(
   otpCode: string
 ): Promise<AccountDeletionConfirmation> {
@@ -77,26 +77,31 @@ export async function confirmAccountDeletion(
       }
     }
 
-    // Supabase Auth를 사용하여 사용자 계정 삭제
-    // 주의: 이 방법은 클라이언트에서 직접 계정을 삭제할 수 없으므로
-    // 실제로는 서버 사이드 함수나 Edge Function을 통해 처리해야 합니다.
+    // Supabase RPC를 사용하여 서버 사이드 함수 호출
+    const { data, error: rpcError } = await supabase.rpc('delete_user_account')
+
+    if (rpcError) {
+      console.error('RPC error deleting account:', rpcError)
+      return {
+        success: false,
+        message: '계정 삭제 중 서버 오류가 발생했습니다.'
+      }
+    }
     
-    // 임시로 사용자 데이터만 정리하고 로그아웃 처리
-    try {
-      // 사용자 메타데이터 정리
-      await supabase.auth.updateUser({
-        data: {
-          deleted: true,
-          deleted_at: new Date().toISOString()
-        }
-      })
-    } catch (updateError) {
-      console.warn('Failed to mark user as deleted:', updateError)
+    // RPC 함수의 반환값은 { success: boolean, message: string } 형태의 행을 포함하는 배열입니다.
+    const resultData = data as Array<{ success: boolean; message: string }>;
+    const result = resultData?.[0];
+
+    if (result && result.success === false) {
+      return {
+        success: false,
+        message: result.message || '계정 삭제에 실패했습니다.'
+      }
     }
 
     return {
       success: true,
-      message: '계정 삭제 요청이 처리되었습니다. 관리자가 최종 삭제를 완료할 예정입니다.'
+      message: '계정이 성공적으로 삭제되었습니다.'
     }
   } catch (error) {
     console.error('Account deletion confirmation error:', error)
