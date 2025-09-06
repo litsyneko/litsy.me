@@ -28,8 +28,18 @@ export default function NewPostClient() {
   })
   
   const router = useRouter()
-  const supabase = createSupabaseClient()
-  const blogService = new BlogService(supabase)
+  const [supabase, setSupabase] = useState<any | null>(null)
+
+  // BlogService는 supabase 클라이언트가 준비된 후에 생성합니다.
+  // 빌드/프리렌더 시점에 브라우저 전용 클라이언트가 생성되지 않도록 useEffect에서 초기화합니다.
+  useEffect(() => {
+    try {
+      setSupabase(createSupabaseClient())
+    } catch (error) {
+      // createSupabaseClient는 서버에서 호출되면 에러를 던집니다. 무시하고 클라이언트 쪽에서만 동작하게 합니다.
+      // console.debug('createSupabaseClient not available on server during prerender')
+    }
+  }, [])
 
   // 권한 체크 및 드래프트 불러오기
   useEffect(() => {
@@ -92,18 +102,22 @@ export default function NewPostClient() {
     setIsSubmitting(true)
 
     try {
-      // BlogService를 사용하여 포스트 생성
+  // BlogService를 사용하여 포스트 생성
+  const client = supabase ?? createSupabaseClient()
+  const blogService = new BlogService(client)
+
       const postData = {
         title: formData.title,
         summary: formData.summary,
         content: formData.content,
         tags: formData.tags,
         cover: formData.cover,
-        // author 필드는 DB에서 필요 없음, author_id로 대체
+        // CreatePostData 요구사항: author 필드 포함
+        author: authStatus.user?.display_name || authStatus.user?.username || authStatus.user?.email || '',
         user_id: authStatus.user?.id || '' // authStatus.user?.id 사용
       }
       
-      const result = await blogService.createPost(postData)
+  const result = await blogService.createPost(postData)
       console.log('Post created:', result)
       
       // 드래프트 삭제

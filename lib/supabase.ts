@@ -1,7 +1,6 @@
 import { createBrowserClient, type CookieOptions } from '@supabase/ssr'
 import { type Session } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { supabaseServer } from './supabase-server'
 
 // 환경 변수 검증
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -60,7 +59,13 @@ export function createSupabaseClient(): SupabaseClient {
 // browser. This keeps imports safe during build/SSR while preserving the
 // existing `import { supabase } from '@/lib/supabase'` usage in client code.
 export const supabase: SupabaseClient<Database> = (typeof window === 'undefined')
-  ? (supabaseServer as SupabaseClient<Database>)
+  ? new Proxy({} as SupabaseClient<Database>, {
+      get() {
+        throw new Error(
+          'Do not import `supabase` from lib/supabase in server code. Use createSupabaseServerClient() from lib/supabase-server.ts in server components and API routes.'
+        )
+      },
+    })
   : new Proxy({} as SupabaseClient<Database>, {
       get(_target, prop: string | symbol) {
         const client = createSupabaseClient()
