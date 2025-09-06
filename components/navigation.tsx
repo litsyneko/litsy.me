@@ -8,21 +8,12 @@ import { Menu, X, Github, Mail, User, LogOut, Settings } from "lucide-react"
 import { FaXTwitter } from "react-icons/fa6"
 import { motion, AnimatePresence } from "framer-motion"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useAuth } from "@/hooks/useAuth"
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
-  const { user, loading, signOut, getUserDisplayName, getUserAvatar } = useAuth()
 
   const navItems = [
     { name: "Home", href: "/" },
@@ -42,84 +33,26 @@ export default function Navigation() {
     setIsOpen(false)
   }, [pathname])
 
-  const handleSignOut = async () => {
-    try {
-      await signOut()
-      router.push('/')
-    } catch (error) {
-      console.error('Sign out error:', error)
-    }
-  }
-
-  const getUserInitials = (email: string) => {
-    return email.charAt(0).toUpperCase()
-  }
-
-  // AuthContext에서 제공하는 유틸리티 함수 사용
-
   const AuthButton = ({ isMobile = false }: { isMobile?: boolean }) => {
-    if (loading) {
-      return (
-        <div className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} animate-pulse rounded-full bg-muted`} />
-      )
-    }
-
-    if (user) {
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-              <Avatar className="h-10 w-10">
-                <AvatarImage 
-                  src={getUserAvatar() || undefined} 
-                  alt={getUserDisplayName()}
-                />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {getUserInitials(user?.email || '')}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <div className="flex items-center justify-start gap-2 p-2">
-              <div className="flex flex-col space-y-1 leading-none">
-                <p className="font-medium">{getUserDisplayName()}</p>
-                <p className="w-[200px] truncate text-sm text-muted-foreground">
-                  {user?.email}
-                </p>
-              </div>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/profile')}>
-              <User className="mr-2 h-4 w-4" />
-              <span>프로필</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/settings')}>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>설정</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>로그아웃</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    }
-
     return (
-      <motion.div
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.95 }}
-        transition={{ duration: 0.12, ease: "easeOut" }}
-      >
-        <Button asChild size={isMobile ? "sm" : "default"} className="relative overflow-hidden">
-          <Link href="/auth">
-            <span className="relative z-10">로그인</span>
-          </Link>
-        </Button>
-      </motion.div>
+      <>
+        <SignedIn>
+          <UserButton afterSignOutUrl="/" />
+        </SignedIn>
+        <SignedOut>
+          <motion.div
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
+          >
+            <Button asChild size={isMobile ? "sm" : "default"} className="relative overflow-hidden">
+              <Link href="/sign-in">
+                <span className="relative z-10">로그인</span>
+              </Link>
+            </Button>
+          </motion.div>
+        </SignedOut>
+      </>
     )
   }
 
