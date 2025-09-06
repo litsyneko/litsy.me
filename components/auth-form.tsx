@@ -159,6 +159,10 @@ export default function AuthForm({
         setMessage({ type: 'error', text: errorMessage })
       } else if (data.user) {
         setMessage({ type: 'success', text: '성공적으로 로그인되었습니다!' })
+        // ✅ 추가: 라우터를 새로고침하여 서버 세션을 다시 읽어오도록 함
+        router.refresh()
+        // 로그인 성공 시 홈으로 이동
+        router.push('/')
       }
     } catch (err) {
       setMessage({ type: 'error', text: '로그인 중 오류가 발생했습니다.' })
@@ -281,24 +285,27 @@ export default function AuthForm({
         }
         setMessage({ type: 'error', text: errorMessage })
       } else {
-        setMessage({ 
-          type: 'success', 
-          text: '가입 확인 이메일을 보냈습니다. 이메일에서 확인 링크를 클릭하세요.' 
+        setMessage({
+          type: 'success',
+          text: '가입 확인 이메일을 보냈습니다. 이메일에서 확인 링크를 클릭하세요.'
         })
-        
+
+        // ✅ 추가: 라우터를 새로고침하여 서버 세션을 다시 읽어오도록 함
+        router.refresh()
+
         // 폼 초기화
         setEmail('')
         setPassword('')
         setConfirmPassword('')
         setFullName('')
         setPhone('')
-        
+
         // 로그인 탭으로 전환
         setTimeout(() => {
           setActiveTab('signin')
-          setMessage({ 
-            type: 'info', 
-            text: '이메일 확인 후 로그인해주세요.' 
+          setMessage({
+            type: 'info',
+            text: '이메일 확인 후 로그인해주세요.'
           })
         }, 3000)
       }

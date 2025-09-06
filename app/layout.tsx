@@ -9,13 +9,7 @@ import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "릿시네코 | LitsyNeko",
-  description: "릿시의 포트폴리오 및 프로젝트, 블로그를 소개하는 웹사이트",
-  keywords: [
-    'Litsy', 'LitsyNeko', 'Portfolio', '릿시', '릿시네코', '웹사이트', '개발자', '버튜버', '유튜버', 'Vtuber', 'Youtuber'
-  ],
-};
+// metadata removed due to "use client" directive in layout
 
 export default function RootLayout({
   children,

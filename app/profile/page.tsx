@@ -34,12 +34,7 @@ import {
   checkUsernameAvailability 
 } from "@/lib/utils/profile-management"
 
-export const metadata = {
-  title: '프로필 | 릿시 포트폴리오',
-  description: '사용자 프로필 관리 페이지 — 개인정보, 닉네임, 아바타 등을 편집할 수 있습니다.',
-  keywords: ['Litsy', '프로필', '계정', '사용자'],
-  robots: 'noindex'
-}
+ // metadata removed due to "use client" directive conflict
 
 export default function ProfilePage() {
   const { user, loading, refreshUser } = useAuth()

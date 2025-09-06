@@ -29,11 +29,7 @@ import {
 import Link from "next/link"
 import Image from "next/image"
 
-export const metadata = {
-  title: '소개 | 릿시네코 웹페이지',
-  description: '릿시네코의 소개 페이지. 경력, 기술 스택 및 연락처 정보를 제공합니다.',
-  keywords: ['Litsy', '릿시네코', '소개', '포트폴리오', '개발자']
-}
+ // metadata removed due to "use client" directive conflict
 
 export default function AboutPage() {
   const heroRef = useRef<HTMLElement>(null)
