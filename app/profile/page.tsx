@@ -292,7 +292,7 @@ export default function ProfilePage() {
                       <Label className="text-sm font-medium">마지막 로그인</Label>
                       <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        <span>{formatDate(user?.last_sign_in_at || '')}</span>
+                        <span>{formatDate((user as any)?.last_sign_in_at || user?.created_at || '')}</span>
                       </div>
                     </div>
                   </div>

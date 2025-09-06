@@ -99,3 +99,39 @@ export function getErrorType(error: AuthError | Error | any): string {
   
   return 'unknown'
 }
+
+// 추가 유틸리티 함수들
+export function isEmailVerified(user: any): boolean {
+  return !!(user?.email_confirmed_at)
+}
+
+export function maskEmail(email: string): string {
+  if (!email || !email.includes('@')) return email
+  
+  const [localPart, domain] = email.split('@')
+  if (localPart.length <= 2) return email
+  
+  const maskedLocal = localPart.charAt(0) + '*'.repeat(localPart.length - 2) + localPart.charAt(localPart.length - 1)
+  return `${maskedLocal}@${domain}`
+}
+
+export function requiresEmailVerification(user: any): boolean {
+  return !isEmailVerified(user)
+}
+
+export function getEmailVerificationMessage(user: any): string {
+  if (!user) return '로그인이 필요합니다.'
+  if (isEmailVerified(user)) return '이메일이 인증되었습니다.'
+  return '이메일 인증을 완료해주세요.'
+}
+
+export function getOAuthRedirectUrl(provider: string, returnTo?: string): string {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const callbackUrl = new URL('/auth/callback', baseUrl)
+  
+  if (returnTo) {
+    callbackUrl.searchParams.set('return_to', returnTo)
+  }
+  
+  return callbackUrl.toString()
+}

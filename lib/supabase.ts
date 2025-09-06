@@ -353,19 +353,21 @@ export async function updateUserProfile(userId: string, updates: ProfileUpdateDa
     }
 
     // public.users 테이블 업데이트 (있는 경우)
+    const updateData: Database['public']['Tables']['users']['Insert'] = {
+      id: userId,
+      username: updates.username || null,
+      display_name: updates.display_name || null,
+      avatar_url: updates.avatar_url || null,
+      bio: updates.bio || null,
+      website: updates.website || null,
+      location: updates.location || null,
+      email: '', // 기본값 제공
+      updated_at: new Date().toISOString()
+    }
+
     const { error: publicError } = await supabase
       .from('users')
-      .upsert({
-        id: userId,
-        username: updates.username || null,
-        display_name: updates.display_name || null,
-        avatar_url: updates.avatar_url || null,
-        bio: updates.bio || null,
-        website: updates.website || null,
-        location: updates.location || null,
-        email: '', // 기본값 제공
-        updated_at: new Date().toISOString()
-      })
+      .upsert(updateData)
 
     if (publicError) {
       console.warn('Error updating public user profile:', publicError)

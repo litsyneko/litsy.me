@@ -24,8 +24,8 @@ export async function generateBlogUrls(): Promise<SitemapEntry[]> {
     }
 
     const blogEntries: SitemapEntry[] = posts.map(post => ({
-      url: `${SITEMAP_CONFIG.baseUrl}/blog/${sanitizeSlug(post.slug)}`,
-      lastModified: formatSitemapDate(post.updated_at),
+      url: `${SITEMAP_CONFIG.baseUrl}/blog/${sanitizeSlug((post as any).slug)}`,
+      lastModified: formatSitemapDate((post as any).updated_at),
       changeFrequency: SITEMAP_CONFIG.dynamicContent.posts.changeFrequency,
       priority: SITEMAP_CONFIG.dynamicContent.posts.priority
     }))
@@ -58,8 +58,8 @@ export async function generateProjectUrls(): Promise<SitemapEntry[]> {
     }
 
     const projectEntries: SitemapEntry[] = projects.map(project => ({
-      url: `${SITEMAP_CONFIG.baseUrl}/projects/${sanitizeSlug(project.slug)}`,
-      lastModified: formatSitemapDate(project.updated_at),
+      url: `${SITEMAP_CONFIG.baseUrl}/projects/${sanitizeSlug((project as any).slug)}`,
+      lastModified: formatSitemapDate((project as any).updated_at),
       changeFrequency: SITEMAP_CONFIG.dynamicContent.projects.changeFrequency,
       priority: SITEMAP_CONFIG.dynamicContent.projects.priority
     }))

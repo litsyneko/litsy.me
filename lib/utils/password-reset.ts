@@ -20,7 +20,7 @@ export async function canRequestPasswordReset(
   ipAddress?: string
 ): Promise<PasswordResetRequest> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .rpc('can_request_password_reset', {
         p_email: email,
         p_ip_address: ipAddress || null
@@ -37,9 +37,9 @@ export async function canRequestPasswordReset(
     }
 
     return {
-      canRequest: data.can_request,
-      reason: data.reason,
-      waitTimeMinutes: data.wait_time_minutes || 0
+      canRequest: (data as any).can_request,
+      reason: (data as any).reason,
+      waitTimeMinutes: (data as any).wait_time_minutes || 0
     }
   } catch (error) {
     console.error('Error checking password reset eligibility:', error)

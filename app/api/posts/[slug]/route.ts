@@ -23,7 +23,7 @@ export async function PUT(request: Request, { params }: { params: { slug: string
   const { slug } = await params as any
   const body = await request.json()
   try {
-  const { data, error } = await (supabase.from('posts').update(body as any).eq('slug', slug) as any)
+  const { data, error } = await (supabase.from('posts').update(body).eq('slug', slug) as any)
     if (error) {
       console.error('Supabase error updating post:', error)
       return NextResponse.json({ error: error.message || error }, { status: 500 })

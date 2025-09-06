@@ -80,7 +80,7 @@ export async function logDiscordOAuthError(
   try {
     const { supabase } = await import('@/lib/supabase')
     
-    await supabase.rpc('log_oauth_error', {
+    await (supabase as any).rpc('log_oauth_error', {
       p_user_id: userId || null,
       p_provider: 'discord',
       p_error_code: error.error,
@@ -118,7 +118,7 @@ export async function syncDiscordUserInfo(userId: string): Promise<boolean> {
     const userData = authUser.user.user_metadata
     
     // 사용자 정보 동기화
-    const { error: syncError } = await supabase
+    const { error: syncError } = await (supabase as any)
       .from('users')
       .upsert({
         id: authUser.user.id,
