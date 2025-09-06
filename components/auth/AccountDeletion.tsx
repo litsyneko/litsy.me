@@ -126,7 +126,7 @@ export default function AccountDeletion() {
 
   const handleDiscordDeletion = async () => {
     if (confirmText !== requiredConfirmText) {
-      setError(`"${requiredConfirmText}"를 정확히 입력해주세요.`)
+      setError(`'${requiredConfirmText}'를 정확히 입력해주세요.`)
       return
     }
 

@@ -19,7 +19,7 @@ export default function NotFound() {
   useEffect(() => {
     const t = setInterval(() => setIdx((i) => (i + 1) % messages.length), 3800)
     return () => clearInterval(t)
-  }, [])
+  }, [messages.length])
 
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center bg-background">

@@ -84,7 +84,7 @@ function useDescriptionTypewriter(descriptions: string[], basePauseDuration = 30
     }, isDeleting ? deleteSpeed : baseSpeed)
 
     return () => clearTimeout(timeout)
-  }, [currentIndex, descIndex, isDeleting, descriptions, basePauseDuration, isWaiting, hasStarted, cycleCount, fastModeAfterFirst])
+  }, [currentIndex, descIndex, isDeleting, descriptions, basePauseDuration, isWaiting, hasStarted, cycleCount, fastModeAfterFirst, descriptions[descIndex]?.length])
 
   return { displayText, showCursor }
 }
@@ -121,7 +121,7 @@ export default function HomePage() {
 
     document.addEventListener('mousemove', handleMouseMove)
     return () => document.removeEventListener('mousemove', handleMouseMove)
-  }, [])
+  }, [skillsRef])
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -418,7 +418,7 @@ export default function HomePage() {
                     }
                   }
                 }
-              }, [globalMousePosition.x, globalMousePosition.y, isDirectHover])
+              }, [globalMousePosition.x, globalMousePosition.y, isDirectHover, cardRef, skillsRef])
 
               const handleMouseEnter = () => {
                 setIsDirectHover(true)

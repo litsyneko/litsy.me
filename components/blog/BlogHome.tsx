@@ -131,7 +131,7 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
     } finally {
       // setLoading(false) // initialPosts 처리 로직에서 이미 호출됨
       setAuthLoading(false)
-      console.log("Loading finished. Current posts state (might be stale due to closure):", posts);
+      console.log("Loading finished. Current posts state (might be stale due to closure):");
       console.log("Loading finished. Final loading state:", false);
     }
   }, [initialPosts])
@@ -333,7 +333,7 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
             <div className="mb-4 flex flex-wrap gap-2 text-sm">
               {query && (
                 <span className="px-3 py-1 bg-primary/10 text-primary rounded-full">
-                  검색: "{query}"
+                  검색: &quot;{query}&quot;
                 </span>
               )}
               {tag && (

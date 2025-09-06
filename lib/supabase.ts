@@ -1,5 +1,7 @@
 import { createBrowserClient, type CookieOptions } from '@supabase/ssr'
 import { type Session } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { supabaseServer } from './supabase-server'
 
 // 환경 변수 검증
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -12,46 +14,38 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// 클라이언트 사이드 Supabase 클라이언트 (브라우저용)
-export const supabase = createBrowserClient<Database>(
-  supabaseUrl,
-  supabaseAnonKey,
-  {
-    cookies: {
-      get(name: string) {
-        if (typeof document === 'undefined') return null
-        const cookie = document.cookie.split(';').find((c) => c.trim().startsWith(`${name}=`))
-        return cookie ? cookie.split('=')[1] : null
-      },
-      set(name: string, value: string, options: CookieOptions) {
-        if (typeof document === 'undefined') return
-        let cookieString = `${name}=${value};`
-        for (const key in options) {
-          cookieString += ` ${key}=${options[key as keyof CookieOptions]};`
-        }
-        document.cookie = cookieString
-      },
-      remove(name: string, options: CookieOptions) {
-        if (typeof document === 'undefined') return
-        document.cookie = `${name}=; Max-Age=0; ${Object.entries(options).map(([key, val]) => `${key}=${val}`).join('; ')}`
-      },
-    },
-  }
-)
+// NOTE: Do NOT create a browser client at module evaluation time. Creating a
+// browser client (which accesses `document`) during build/server runtime will
+// throw `ReferenceError: document is not defined`.
+//
+// Use `createSupabaseClient()` from client-side code (e.g. inside React
+// components or effects). For server code (server components, `sitemap.ts`,
+// API routes), use `createSupabaseServerClient()` from
+// `lib/supabase-server.ts`.
 
 // 클라이언트 생성 함수 (호환성을 위해) - createBrowserClient로 업데이트
-export function createSupabaseClient() {
+export function createSupabaseClient(): SupabaseClient {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    throw new Error(
+      'createSupabaseClient() must be called in a browser environment. For server-side usage, use createSupabaseServerClient() from lib/supabase-server.ts.'
+    )
+  }
+
   return createBrowserClient<Database>(
     supabaseUrl,
     supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
-          const cookie = document.cookie.split(';').find((c) => c.startsWith(`${name}=`))
+          const cookie = document.cookie.split(';').find((c) => c.trim().startsWith(`${name}=`))
           return cookie ? cookie.split('=')[1] : null
         },
         set(name: string, value: string, options: CookieOptions) {
-          document.cookie = `${name}=${value}; ${Object.entries(options).map(([key, val]) => `${key}=${val}`).join('; ')}`
+          let cookieString = `${name}=${value};`
+          for (const key in options) {
+            cookieString += ` ${key}=${options[key as keyof CookieOptions]};`
+          }
+          document.cookie = cookieString
         },
         remove(name: string, options: CookieOptions) {
           document.cookie = `${name}=; Max-Age=0; ${Object.entries(options).map(([key, val]) => `${key}=${val}`).join('; ')}`
@@ -60,6 +54,20 @@ export function createSupabaseClient() {
     }
   )
 }
+
+// Export a `supabase` binding that resolves to the server client when running
+// in Node (server-side) and to a lazily-created browser client in the
+// browser. This keeps imports safe during build/SSR while preserving the
+// existing `import { supabase } from '@/lib/supabase'` usage in client code.
+export const supabase: SupabaseClient<Database> = (typeof window === 'undefined')
+  ? (supabaseServer as SupabaseClient<Database>)
+  : new Proxy({} as SupabaseClient<Database>, {
+      get(_target, prop: string | symbol) {
+        const client = createSupabaseClient()
+        // @ts-ignore - forward the access to the real client
+        return (client as any)[prop]
+      },
+    })
 
 // 타입 정의 - Supabase Auth 직접 사용으로 단순화
 export type Database = {
@@ -412,7 +420,7 @@ export interface UserProfile {
 export interface ProfileUpdateData {
   username?: string
   display_name?: string
-  avatar?: string // avatar_url -> avatar
+  avatar_url?: string // avatar_url -> avatar
   bio?: string
   website?: string
   location?: string
@@ -456,10 +464,13 @@ export function isEmailVerified(user: AuthUser | null): boolean {
 }
 
 // 프로필 관련 함수들 - 단순화된 버전 (RPC 함수 대신 직접 테이블 접근)
-export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+export async function getUserProfile(userId: string, client?: SupabaseClient<Database>): Promise<UserProfile | null> {
   try {
-    // auth.users에서 직접 사용자 정보 가져오기
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+  // supabase client (인자로 전달된 클라이언트 우선, 없으면 브라우저에서 생성)
+  const supabase = client ?? createSupabaseClient()
+
+  // auth.users에서 직접 사용자 정보 가져오기
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user || user.id !== userId) {
       return null
@@ -493,14 +504,16 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   }
 }
 
-export async function updateUserProfile(userId: string, updates: ProfileUpdateData): Promise<boolean> {
+export async function updateUserProfile(userId: string, updates: ProfileUpdateData, client?: SupabaseClient<Database>): Promise<boolean> {
   try {
-    // auth.users 메타데이터 업데이트 (여기서는 email 변경은 직접 하지 않음, 다른 방법을 통해야 함)
-    const { error: authError } = await supabase.auth.updateUser({
+  const supabase = client ?? createSupabaseClient()
+
+  // auth.users 메타데이터 업데이트 (여기서는 email 변경은 직접 하지 않음, 다른 방법을 통해야 함)
+  const { error: authError } = await supabase.auth.updateUser({
       data: {
         display_name: updates.display_name,
         username: updates.username,
-        avatar_url: updates.avatar || null, // auth.users의 user_metadata는 avatar_url을 사용
+        avatar_url: updates.avatar_url || null, // auth.users의 user_metadata는 avatar_url을 사용
       }
     })
 
@@ -513,7 +526,7 @@ export async function updateUserProfile(userId: string, updates: ProfileUpdateDa
     const updateData: Database['public']['Tables']['users']['Update'] = {
       username: updates.username || null,
       display_name: updates.display_name || null,
-      avatar: updates.avatar || null, // public.users는 avatar를 사용
+      avatar: updates.avatar_url || null, // public.users는 avatar를 사용
       bio: updates.bio || null,
       website: updates.website || null,
       location: updates.location || null,
@@ -521,7 +534,7 @@ export async function updateUserProfile(userId: string, updates: ProfileUpdateDa
       updated_at: new Date().toISOString()
     }
 
-    const { error: publicError } = await supabase
+    const { error: publicError } = await (supabase as any)
       .from('users')
       .update(updateData)
       .eq('id', userId)
@@ -540,12 +553,14 @@ export async function updateUserProfile(userId: string, updates: ProfileUpdateDa
 
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+  const supabase = createSupabaseClient()
 
-    if (!user) return null
+  const { data: { user } } = await supabase.auth.getUser()
 
-    // auth.users의 user_metadata에서 email을 가져와서 getUserProfile에 전달
-    return await getUserProfile(user.id)
+  if (!user) return null
+
+  // auth.users의 user_metadata에서 email을 가져와서 getUserProfile에 전달
+  return await getUserProfile(user.id, supabase)
   } catch (error) {
     console.error('Error fetching current user profile:', error)
     return null

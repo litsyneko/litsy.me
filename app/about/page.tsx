@@ -192,7 +192,7 @@ export default function AboutPage() {
                 </div>
                 
                 <p className="text-base sm:text-lg text-muted-foreground mb-4 leading-relaxed">
-                  "2020년 Discord 봇 개발에 푹 빠져 시작된 여정이 지금의 저를 만들었습니다."<br className="hidden sm:block" />
+                  &quot;2020년 Discord 봇 개발에 푹 빠져 시작된 여정이 지금의 저를 만들었습니다.&quot;<br className="hidden sm:block" />
                   <span className="block sm:inline mt-1 sm:mt-0">Team Alpha부터 현재 팀 HaruCream까지, 끊임없이 성장하는 대학생 개발자입니다.</span>
                 </p>
                 
@@ -498,7 +498,8 @@ export default function AboutPage() {
                   <div className="flex items-center justify-center gap-3 pt-6">
                     <Star className="w-5 h-5 text-yellow-500 fill-current dark:text-yellow-400" />
                     <span className="text-base italic text-muted-foreground font-medium">
-                      "끊임없는 열정과 새로운 도전, 그리고 팀과 함께하는 성장"
+                                            &quot;끊임없는 열정과 새로운 도전, 그리고 팀과 함께하는 성장&quot;
+
                     </span>
                     <Star className="w-5 h-5 text-yellow-500 fill-current dark:text-yellow-400" />
                   </div>

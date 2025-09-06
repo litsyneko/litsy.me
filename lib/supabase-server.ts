@@ -19,7 +19,7 @@ export const supabaseServiceRole = createClient<Database>(supabaseUrl, supabaseS
 
 // 서버 컴포넌트 및 API 라우트에서 사용될 Supabase 클라이언트 (세션 관리 포함)
 export function createSupabaseServerClient() {
-  const cookieStore = cookies()
+  const cookieStore = cookies() as any
 
   return createServerClient<Database>(
     supabaseUrl,

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Lock, AlertCircle, Clock } from 'lucide-react'
 import BlogForm, { type BlogFormData } from '@/components/blog/BlogForm'
-// import { checkBlogWritePermission, hasWritePermission, type BlogAuthUser } from '@/lib/utils/blog-auth' // 제거 예정
+{/* import { checkBlogWritePermission, hasWritePermission, type BlogAuthUser } from '@/lib/utils/blog-auth' // 제거 예정 */}
 import { createSupabaseClient } from '@/lib/supabase'
 import { BlogService } from '@/lib/services/blog'
 import { saveDraft, loadDraft, clearDraft, hasDraft, getDraftLastSaved } from '@/lib/utils/draft'
