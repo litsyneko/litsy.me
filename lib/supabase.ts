@@ -26,6 +26,23 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   }
 })
 
+// 클라이언트 생성 함수 (호환성을 위해)
+export function createSupabaseClient() {
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce'
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'supabase-js-web'
+      }
+    }
+  })
+}
+
 // 타입 정의 - Supabase Auth 직접 사용으로 단순화
 export type Database = {
   public: {

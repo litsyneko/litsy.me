@@ -13,7 +13,7 @@ export const SITEMAP_CONFIG = {
     { path: '/auth/signup', changeFrequency: 'yearly', priority: 0.3 }
   ] as StaticPageConfig[],
   dynamicContent: {
-    posts: { baseUrl: '/blog', changeFrequency: 'weekly', priority: 0.8 },
-    projects: { baseUrl: '/projects', changeFrequency: 'monthly', priority: 0.7 }
+    posts: { baseUrl: '/blog', changeFrequency: 'daily', priority: 0.8 }, // 블로그는 더 자주 업데이트
+    projects: { baseUrl: '/projects', changeFrequency: 'weekly', priority: 0.7 } // 프로젝트는 주간 업데이트
   } as Record<string, DynamicContentConfig>
 } as const

@@ -3,8 +3,13 @@ import { generateStaticUrls } from '@/lib/sitemap/static'
 import { generateBlogUrls, generateProjectUrls } from '@/lib/sitemap/dynamic'
 import { logSitemapError } from '@/lib/sitemap/utils'
 
+// 캐시 설정 - 5분마다 재생성
+export const revalidate = 300
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
+    console.log('🗺️ Generating dynamic sitemap...')
+    
     // 병렬로 모든 URL 생성 함수 실행
     const [staticUrls, blogUrls, projectUrls] = await Promise.all([
       generateStaticUrls(),
@@ -15,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // 모든 URL을 병합하여 반환
     const allUrls = [...staticUrls, ...blogUrls, ...projectUrls]
     
-    console.log(`Generated sitemap with ${allUrls.length} URLs`)
+    console.log(`✅ Generated sitemap with ${allUrls.length} URLs (${blogUrls.length} blog posts, ${projectUrls.length} projects)`)
     
     return allUrls
   } catch (error) {
@@ -23,8 +28,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     
     // 에러 발생 시 최소한 정적 페이지라도 반환
     try {
-      const fallbackUrls = generateStaticUrls()
-      console.warn(`Fallback to static URLs only: ${fallbackUrls.length} URLs`)
+      const fallbackUrls = await generateStaticUrls()
+      console.warn(`⚠️ Fallback to static URLs only: ${fallbackUrls.length} URLs`)
       return fallbackUrls
     } catch (fallbackError) {
       logSitemapError('sitemap fallback', fallbackError)
