@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer as supabase } from '@/lib/supabase-server'
 
-export async function GET(request: Request, { params }: { params: { slug: string } }) {
-  const { slug } = await params as any
+export async function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   try {
   const { data, error } = await (supabase.from('posts').select('*').eq('slug', slug).limit(1).single() as any)
     if (error) {
@@ -19,11 +19,11 @@ export async function GET(request: Request, { params }: { params: { slug: string
   }
 }
 
-export async function PUT(request: Request, { params }: { params: { slug: string } }) {
-  const { slug } = await params as any
+export async function PUT(request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   const body = await request.json()
   try {
-  const { data, error } = await (supabase.from('posts').update(body).eq('slug', slug) as any)
+  const { data, error } = await (supabase as any).from('posts').update(body).eq('slug', slug)
     if (error) {
       console.error('Supabase error updating post:', error)
       return NextResponse.json({ error: error.message || error }, { status: 500 })
@@ -35,8 +35,8 @@ export async function PUT(request: Request, { params }: { params: { slug: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { slug: string } }) {
-  const { slug } = await params as any
+export async function DELETE(request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   try {
   const { data, error } = await supabase.from('posts').delete().eq('slug', slug)
     if (error) {

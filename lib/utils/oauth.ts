@@ -21,7 +21,7 @@ export async function signInWithDiscord(): Promise<AuthResponse> {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
-        redirectTo: getOAuthRedirectUrl(),
+        redirectTo: getOAuthRedirectUrl('discord'),
         scopes: 'identify email'
       }
     })
@@ -102,7 +102,7 @@ export async function handleOAuthCallback(): Promise<AuthResponse> {
  */
 export async function syncOAuthUserData(userId: string, provider: string, userData: any): Promise<void> {
   try {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('users')
       .upsert({
         id: userId,

@@ -84,7 +84,7 @@ export async function updateUserProfile(
     }
 
     // public.users 테이블도 업데이트 (있는 경우)
-    const { error: publicError } = await supabase
+    const { error: publicError } = await (supabase as any)
       .from('users')
       .upsert({
         id: user.id,
@@ -138,7 +138,7 @@ export async function getUserProfileData(): Promise<UserProfileData | null> {
       website: user.user_metadata?.website,
       bio: user.user_metadata?.bio,
       created_at: user.created_at,
-      updated_at: user.updated_at,
+      updated_at: user.updated_at || user.created_at,
       email_confirmed_at: user.email_confirmed_at,
       last_sign_in_at: user.last_sign_in_at,
       provider: user.app_metadata?.provider || 'email',

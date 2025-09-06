@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   // Admin-only: expects JSON body. This route requires service role key in env for real use.
   const body = await request.json()
   try {
-    const { data, error } = await supabase.from('projects').insert([body])
+    const { data, error } = await (supabase as any).from('projects').insert([body])
     if (error) {
       console.error('Supabase error inserting project:', error)
       return NextResponse.json({ error: error.message || error }, { status: 500 })

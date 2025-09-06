@@ -18,12 +18,21 @@ type Post = {
   comments?: any[]
 }
 
-export default function PostPage({ params }: { params: { slug: string } }) {
-  const { slug } = params as any
+export default function PostPage({ params }: { params: Promise<{ slug: string }> }) {
+  const [slug, setSlug] = useState<string>('')
   const [post, setPost] = useState<Post | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // params를 resolve
+    params.then(({ slug: resolvedSlug }) => {
+      setSlug(resolvedSlug)
+    })
+  }, [params])
+
+  useEffect(() => {
+    if (!slug) return
+    
     let mounted = true
     // 먼저 localStorage에서 찾아본다 (새로 작성한 로컬 포스트 포함)
     try {

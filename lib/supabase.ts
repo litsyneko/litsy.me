@@ -365,7 +365,7 @@ export async function updateUserProfile(userId: string, updates: ProfileUpdateDa
       updated_at: new Date().toISOString()
     }
 
-    const { error: publicError } = await supabase
+    const { error: publicError } = await (supabase as any)
       .from('users')
       .upsert(updateData)
 

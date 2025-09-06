@@ -208,9 +208,19 @@ export async function verifyReauthenticationOTP(
   token: string
 ): Promise<{ success: boolean; message: string }> {
   try {
+    // 현재 사용자의 이메일 필요
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.email) {
+      return {
+        success: false,
+        message: '사용자 정보를 찾을 수 없습니다.'
+      }
+    }
+
     const { error } = await supabase.auth.verifyOtp({
       token,
-      type: 'email'
+      type: 'email',
+      email: user.email
     })
 
     if (error) {

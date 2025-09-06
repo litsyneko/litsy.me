@@ -61,7 +61,7 @@ export async function logPasswordResetRequest(
     // 클라이언트에서 IP 주소와 User Agent 수집
     const userAgent = typeof window !== 'undefined' ? window.navigator.userAgent : null
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .rpc('log_password_reset_request', {
         p_email: email,
         p_ip_address: null, // 클라이언트에서는 IP 주소를 직접 얻을 수 없음
@@ -88,7 +88,7 @@ export async function getPasswordResetStats(
   days: number = 30
 ): Promise<PasswordResetStats | null> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .rpc('get_password_reset_stats', {
         p_user_id: userId || null,
         p_days: days
@@ -101,11 +101,11 @@ export async function getPasswordResetStats(
     }
 
     return {
-      totalRequests: data.total_requests,
-      successfulRequests: data.successful_requests,
-      failedRequests: data.failed_requests,
-      lastRequestAt: data.last_request_at,
-      lastSuccessAt: data.last_success_at
+      totalRequests: (data as any).total_requests,
+      successfulRequests: (data as any).successful_requests,
+      failedRequests: (data as any).failed_requests,
+      lastRequestAt: (data as any).last_request_at,
+      lastSuccessAt: (data as any).last_success_at
     }
   } catch (error) {
     console.error('Error getting password reset stats:', error)
