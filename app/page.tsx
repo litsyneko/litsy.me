@@ -89,6 +89,13 @@ function useDescriptionTypewriter(descriptions: string[], basePauseDuration = 30
   return { displayText, showCursor }
 }
 
+export const metadata = {
+  title: '홈 | 릿시 포트폴리오',
+  description: '릿시(릿시네코)의 포트폴리오 홈페이지 — 프로젝트, 기술, 블로그를 한눈에 확인할 수 있습니다.',
+  keywords: ['Litsy', '릿시', '포트폴리오', '개발자', '웹사이트']
+}
+
+// 페이지 기능: 대표 프로젝트, 기술 스택, 소개 및 연락처로의 진입점 제공
 export default function HomePage() {
   const [isVisible, setIsVisible] = useState(false)
   const [globalMousePosition, setGlobalMousePosition] = useState({ x: 0, y: 0 })

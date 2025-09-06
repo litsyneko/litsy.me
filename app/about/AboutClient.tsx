@@ -29,13 +29,7 @@ import {
 import Link from "next/link"
 import Image from "next/image"
 
-export const metadata = {
-  title: '소개 | 릿시네코 웹페이지',
-  description: '릿시네코의 소개 페이지. 경력, 기술 스택 및 연락처 정보를 제공합니다.',
-  keywords: ['Litsy', '릿시네코', '소개', '포트폴리오', '개발자']
-}
-
-export default function AboutPage() {
+export default function AboutClient() {
   const heroRef = useRef<HTMLElement>(null)
   const experienceRef = useRef<HTMLElement>(null)
   const skillsRef = useRef<HTMLElement>(null)
@@ -150,6 +144,8 @@ export default function AboutPage() {
   ]
 
   return (
+    // ...existing UI code...
+    // keep the full client UI as in the original page.tsx
     <div className="min-h-screen bg-gradient-to-br from-background to-background/95 dark:from-background dark:to-background/90 relative overflow-hidden">
       {/* Dynamic background elements */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,hsl(var(--primary)/0.03),transparent_50%)] dark:bg-[radial-gradient(circle_at_50%_50%,hsl(var(--primary)/0.08),transparent_50%)]"></div>
@@ -198,7 +194,7 @@ export default function AboutPage() {
                 </div>
                 
                 <p className="text-base sm:text-lg text-muted-foreground mb-4 leading-relaxed">
-                  &quot;2020년 Discord 봇 개발에 푹 빠져 시작된 여정이 지금의 저를 만들었습니다.&quot;<br className="hidden sm:block" />
+                  &quot;2020년 Discord 봇 개발에 푹 빠진 여정이 지금의 저를 만들었습니다.&quot;<br className="hidden sm:block" />
                   <span className="block sm:inline mt-1 sm:mt-0">Team Alpha부터 현재 팀 HaruCream까지, 끊임없이 성장하는 대학생 개발자입니다.</span>
                 </p>
                 
@@ -504,7 +500,7 @@ export default function AboutPage() {
                   <div className="flex items-center justify-center gap-3 pt-6">
                     <Star className="w-5 h-5 text-yellow-500 fill-current dark:text-yellow-400" />
                     <span className="text-base italic text-muted-foreground font-medium">
-                                            &quot;끊임없는 열정과 새로운 도전, 그리고 팀과 함께하는 성장&quot;
+                                            &quot;끊임없는 열정과 새로운 도전, 그리고 팀과 함께하는 성장";
 
                     </span>
                     <Star className="w-5 h-5 text-yellow-500 fill-current dark:text-yellow-400" />

@@ -274,3 +274,10 @@ export default function SettingsPage() {
     </div>
   )
 }
+
+export const metadata = {
+  title: '설정 | 릿시 포트폴리오',
+  description: '애플리케이션 설정 페이지 — 테마, 알림, 언어 등 개인화 가능한 설정을 제공합니다.',
+  keywords: ['Litsy', '설정', '환경설정', 'preferences'],
+  robots: 'noindex'
+}

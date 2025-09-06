@@ -58,6 +58,18 @@ export function createSupabaseClient(): SupabaseClient {
 // in Node (server-side) and to a lazily-created browser client in the
 // browser. This keeps imports safe during build/SSR while preserving the
 // existing `import { supabase } from '@/lib/supabase'` usage in client code.
+// Use a singleton browser client so multiple imports/usages share the same
+// Supabase instance. Creating a new client on every property access caused
+// subscriptions and session state to diverge (e.g. onAuthStateChange not
+// matching the client used for signIn), which breaks login flows.
+let _browserSupabase: SupabaseClient<Database> | null = null
+function getBrowserSupabaseClient(): SupabaseClient<Database> {
+  if (!_browserSupabase) {
+    _browserSupabase = createSupabaseClient()
+  }
+  return _browserSupabase
+}
+
 export const supabase: SupabaseClient<Database> = (typeof window === 'undefined')
   ? new Proxy({} as SupabaseClient<Database>, {
       get() {
@@ -68,9 +80,17 @@ export const supabase: SupabaseClient<Database> = (typeof window === 'undefined'
     })
   : new Proxy({} as SupabaseClient<Database>, {
       get(_target, prop: string | symbol) {
-        const client = createSupabaseClient()
+        const client = getBrowserSupabaseClient()
         // @ts-ignore - forward the access to the real client
-        return (client as any)[prop]
+        const value = (client as any)[prop]
+        // If it's a function, bind it to the client to preserve `this`.
+        if (typeof value === 'function') return value.bind(client)
+        return value
+      },
+      set(_target, prop: string | symbol, value: any) {
+        const client = getBrowserSupabaseClient()
+        ;(client as any)[prop] = value
+        return true
       },
     })
 

@@ -5,25 +5,27 @@ import { BlogService } from '@/lib/services/blog' // BlogService 임포트
 import { BlogPostWithAuthor } from '@/lib/services/blog' // BlogPostWithAuthor 임포트
 
 export const metadata: Metadata = {
-  title: 'Blog | Litsy Portfolio',
-  description: '기술과 생각을 공유하는 블로그입니다. Next.js, React, Supabase 등 다양한 기술에 대한 글을 작성합니다.',
-  keywords: ['블로그', '기술', 'Next.js', 'React', 'Supabase', '개발', '프로그래밍'],
+  title: '블로그 | 릿시 포트폴리오',
+  description: '기술과 생각을 공유하는 블로그입니다. Next.js, React, Supabase 등 개발 관련 글을 한국어로 제공합니다.',
+  keywords: ['Litsy', '릿시', '블로그', '개발', 'Next.js', 'React', 'Supabase'],
   authors: [{ name: 'Litsy' }],
   openGraph: {
-    title: 'Blog | Litsy Portfolio',
+    title: '블로그 | 릿시 포트폴리오',
     description: '기술과 생각을 공유하는 블로그입니다.',
     type: 'website',
     locale: 'ko_KR',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Blog | Litsy Portfolio',
+    title: '블로그 | 릿시 포트폴리오',
     description: '기술과 생각을 공유하는 블로그입니다.',
   },
   alternates: {
     canonical: '/blog',
   },
 }
+
+// 페이지 기능: 블로그 글 목록 표시 및 서버사이드에서 초기 포스트 데이터 프리패치
 
 export default async function BlogPage() { // async 함수로 변경
   const supabase = createSupabaseServerClient()
