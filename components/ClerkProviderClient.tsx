@@ -8,8 +8,23 @@ import React, { useEffect, useState } from 'react'
 export default function ClerkProviderClient({ children }: { children: React.ReactNode }) {
   const [ClerkProvider, setClerkProvider] = useState<any | null>(null)
   const [hasKey, setHasKey] = useState<boolean | null>(null)
+  const [isDark, setIsDark] = useState<boolean | null>(null)
 
   useEffect(() => {
+    // Determine theme from document class or prefers-color-scheme
+    const detectTheme = () => {
+      try {
+        if (typeof window === 'undefined') return null
+        const doc = document.documentElement
+        if (doc.classList.contains('dark')) return true
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        return prefersDark
+      } catch {
+        return null
+      }
+    }
+    setIsDark(detectTheme())
+
     const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
     if (!key) {
       setHasKey(false)
@@ -44,5 +59,16 @@ export default function ClerkProviderClient({ children }: { children: React.Reac
   }
 
   const Provider = ClerkProvider
-  return <Provider>{children}</Provider>
+
+  // Build Clerk appearance using theme and CSS variables from the app.
+  const appearance: any = {
+    baseTheme: isDark ? 'dark' : 'light',
+    variables: {
+      // Use CSS variables defined in the app theme (fallbacks provided)
+      colorPrimary: getComputedStyle(document.documentElement).getPropertyValue('--primary') || '#2563eb',
+      colorText: getComputedStyle(document.documentElement).getPropertyValue('--foreground') || '#111827',
+    },
+  }
+
+  return <Provider appearance={appearance}>{children}</Provider>
 }

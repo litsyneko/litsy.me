@@ -1,5 +1,5 @@
-import SignInClient from "../SignInClient";
+import CustomSignIn from "../CustomSignIn";
 
 export default function Page() {
-  return <SignInClient />;
+  return <CustomSignIn />;
 }
