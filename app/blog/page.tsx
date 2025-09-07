@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 // 페이지 기능: 블로그 글 목록 표시 및 서버사이드에서 초기 포스트 데이터 프리패치
 
 export default async function BlogPage() { // async 함수로 변경
-  const supabase = createServerClient()
+  const supabase = createServerClient({ cookieStore: {} })
   const blogService = new BlogService(supabase)
   let initialPosts: BlogPostWithAuthor[] = []
 

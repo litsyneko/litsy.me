@@ -30,7 +30,7 @@ export const createServerClient = (cookieStore: any) => {
           }
         },
       },
-    }
+    } as any
   )
 }
 

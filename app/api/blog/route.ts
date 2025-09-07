@@ -11,7 +11,8 @@ export async function POST(req: Request) {
   const { title, summary, content, tags, cover, author, published = false, postId } = body
 
     // optional: verify user exists in Clerk
-    const clerkUser = await clerkClient.users.getUser(userId)
+    const clerk = await clerkClient();
+    const clerkUser = await clerk.users.getUser(userId)
 
     let data: any = null
     let error: any = null
@@ -59,9 +60,22 @@ export async function GET(req: Request) {
   const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Query params: ?mode=drafts|all
+    // Query params: ?mode=drafts|all or ?postId=<id>
     const url = new URL(req.url)
+    const postId = url.searchParams.get('postId')
     const mode = url.searchParams.get('mode') || 'all'
+
+    if (postId) {
+      const { data, error } = await supabaseServiceRole
+        .from('posts')
+        .select('*')
+        .eq('id', postId)
+        .eq('user_id', userId)
+        .single()
+
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ post: data ?? null })
+    }
 
     const query = supabaseServiceRole
       .from('posts')

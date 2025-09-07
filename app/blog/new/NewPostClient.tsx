@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, Lock, AlertCircle, Clock } from 'lucide-react'
 import BlogForm, { type BlogFormData } from '@/components/blog/BlogForm'
 import { saveDraft, loadDraft, clearDraft } from '@/lib/utils/draft'
@@ -16,6 +16,7 @@ export default function NewPostClient() {
   const [loadingState, setLoadingState] = useState<boolean>(true)
 
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     if (!isLoaded) return
@@ -25,6 +26,29 @@ export default function NewPostClient() {
     }
 
     const draft = loadDraft()
+    const urlPostId = searchParams?.get('postId')
+
+    // If URL has postId, try to fetch server draft
+    if (urlPostId) {
+      ;(async () => {
+        try {
+          const res = await fetch(`/api/blog?postId=${urlPostId}`)
+          if (res.ok) {
+            const json = await res.json()
+            if (json.post) {
+              const p = json.post
+              setInitialFormData({ title: p.title, summary: p.summary || '', content: p.content || '', tags: p.tags || [], cover: p.cover || '' })
+              setPostId(p.id)
+              setDraftInfo({ exists: true, lastSaved: p.updated_at ? new Date(p.updated_at) : new Date() })
+              setLoadingState(false)
+              return
+            }
+          }
+        } catch (e) {
+          console.error('Failed to fetch post by postId:', e)
+        }
+      })()
+    }
     if (draft) {
       setInitialFormData({
         title: draft.title,

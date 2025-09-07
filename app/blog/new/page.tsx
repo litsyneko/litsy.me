@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import NewPostClient from './NewPostClient'
+import React, { Suspense } from 'react'
 
 export const metadata: Metadata = {
   title: '새 글 작성 | Litsy Portfolio',
@@ -11,5 +12,9 @@ export const metadata: Metadata = {
 }
 
 export default function NewPostPage() {
-  return <NewPostClient />
+  return (
+    <Suspense fallback={<div className="max-w-3xl mx-auto py-12 px-4">로딩 중...</div>}>
+      <NewPostClient />
+    </Suspense>
+  )
 }
