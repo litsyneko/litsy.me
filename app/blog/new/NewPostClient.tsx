@@ -12,6 +12,7 @@ export default function NewPostClient() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [initialFormData, setInitialFormData] = useState<Partial<BlogFormData>>({})
   const [draftInfo, setDraftInfo] = useState<{ exists: boolean; lastSaved: Date | null }>({ exists: false, lastSaved: null })
+  const [postId, setPostId] = useState<string | null>(null)
   const [loadingState, setLoadingState] = useState<boolean>(true)
 
   const router = useRouter()
@@ -56,6 +57,8 @@ export default function NewPostClient() {
         tags: formData.tags,
         cover: formData.cover,
         author: user.fullName || user.firstName || user.username || user.primaryEmailAddress?.emailAddress || '',
+  published: true,
+  postId: postId || undefined,
       }
 
       const res = await fetch('/api/blog', {
@@ -69,7 +72,8 @@ export default function NewPostClient() {
         throw new Error(err?.error || 'Failed to create post')
       }
 
-      clearDraft()
+  clearDraft()
+  setPostId(null)
       router.push('/blog')
     } catch (error) {
       console.error('Error creating post:', error)
@@ -103,10 +107,51 @@ export default function NewPostClient() {
 
   const handleCancel = () => router.push('/blog')
 
-  const handleSaveDraft = (formData: BlogFormData) => {
-    saveDraft(formData)
-    setDraftInfo({ exists: true, lastSaved: new Date() })
-    alert('임시 저장되었습니다.')
+  const handleSaveDraft = async (formData: BlogFormData) => {
+    try {
+      if (!isSignedIn || !user) {
+        saveDraft(formData)
+        setDraftInfo({ exists: true, lastSaved: new Date() })
+        alert('임시 저장되었습니다. (로컬)')
+        return
+      }
+
+      const payload: any = {
+        title: formData.title,
+        summary: formData.summary,
+        content: formData.content,
+        tags: formData.tags,
+        cover: formData.cover,
+        author: user.fullName || user.firstName || user.username || user.primaryEmailAddress?.emailAddress || '',
+        published: false,
+      }
+      if (postId) payload.postId = postId
+
+      const res = await fetch('/api/blog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || 'Failed to save draft')
+
+      const saved = json.post
+      if (saved?.id) {
+        setPostId(saved.id)
+        saveDraft({ ...formData, postId: saved.id } as any)
+      } else {
+        saveDraft(formData)
+      }
+
+      setDraftInfo({ exists: true, lastSaved: new Date() })
+      alert('서버에 임시 저장되었습니다.')
+    } catch (err) {
+      console.error('Error saving draft to server, falling back to local:', err)
+      saveDraft(formData)
+      setDraftInfo({ exists: true, lastSaved: new Date() })
+      alert('임시 저장되었습니다. (로컬)')
+    }
   }
 
   if (loadingState) {

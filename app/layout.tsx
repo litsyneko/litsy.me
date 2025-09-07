@@ -1,4 +1,4 @@
-import { ClerkProvider } from '@clerk/nextjs'
+import ClerkProviderClient from '@/components/ClerkProviderClient'
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import Navigation from "@/components/navigation";
@@ -18,12 +18,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProviderClient>
       <html lang="ko" suppressHydrationWarning>
         <head>
           <meta name="naver-site-verification" content="46a4cc0ec327f438b21ecdce34934a76db0fe86f" />
         </head>
-  <body>
+        <body>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -38,6 +38,6 @@ export default function RootLayout({
           </ThemeProvider>
         </body>
       </html>
-    </ClerkProvider>
+    </ClerkProviderClient>
   )
 }

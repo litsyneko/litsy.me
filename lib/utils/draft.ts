@@ -4,16 +4,22 @@ const DRAFT_KEY = 'blog-draft'
 
 export interface DraftData extends BlogFormData {
   lastSaved: string
+  postId?: string | null
 }
 
 /**
  * 드래프트 저장
  */
-export function saveDraft(data: BlogFormData): void {
+export function saveDraft(data: Partial<DraftData> | BlogFormData): void {
   try {
     const draftData: DraftData = {
-      ...data,
-      lastSaved: new Date().toISOString()
+      title: (data as any).title || '',
+      summary: (data as any).summary || '',
+      content: (data as any).content || '',
+      tags: (data as any).tags || [],
+      cover: (data as any).cover || '',
+      lastSaved: new Date().toISOString(),
+      postId: (data as any).postId || null,
     }
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draftData))
   } catch (error) {
