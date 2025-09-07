@@ -20,6 +20,20 @@ export interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // If Clerk publishable key is missing (e.g. during CI/build), avoid calling
+  // Clerk hooks which will throw when no <ClerkProvider /> is present.
+  const hasClerk = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
+
+  if (!hasClerk) {
+    const value: AuthContextType = {
+      user: null,
+      loading: false,
+      signOut: async () => { /* noop */ },
+      refreshUser: async () => { return },
+    }
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  }
+
   const { isLoaded, isSignedIn, user } = useUser()
   const clerk = useClerk()
   const signOut = async () => {
@@ -31,8 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return {
       id: user.id,
       email: user.emailAddresses?.[0]?.emailAddress || null,
-    user_metadata: (user as any).privateMetadata || {},
-    app_metadata: (user as any).publicMetadata || {},
+      user_metadata: (user as any).privateMetadata || {},
+      app_metadata: (user as any).publicMetadata || {},
     }
   }, [isLoaded, isSignedIn, user])
 
