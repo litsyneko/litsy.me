@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/AuthContext"
+import { redirectToSignIn, redirectToSignUp, redirectToUnauthorizedSignIn } from "@/lib/auth-redirects"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -117,7 +118,7 @@ export default function AuthForm({ className, redirectTo = "/", showSocialLogin 
   // Clerk에서 제공하는 인증 UI를 사용합니다.
   // 커스텀 이메일/비밀번호 로그인은 Clerk 측으로 마이그레이션 필요하므로
   // 현재는 클러크의 /sign-in 페이지로 리다이렉트합니다.
-  router.push('/sign-in')
+  redirectToSignIn()
   }
 
   const handleMagicLinkLogin = async (e: React.FormEvent) => {
@@ -133,7 +134,7 @@ export default function AuthForm({ className, redirectTo = "/", showSocialLogin 
     }
 
   // Clerk로 매직링크 로그인을 위임합니다.
-  router.push('/sign-in')
+  redirectToSignIn()
   }
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -166,7 +167,7 @@ export default function AuthForm({ className, redirectTo = "/", showSocialLogin 
 
   // 현재는 Clerk의 /sign-up 페이지로 이동하여 회원가입을 진행합니다.
   // username 유효성 검사 등은 서버측 API로 유지됩니다.
-  router.push('/sign-up')
+  redirectToSignUp()
   }
 
   const handlePasswordReset = async (e: React.FormEvent) => {
@@ -222,7 +223,7 @@ export default function AuthForm({ className, redirectTo = "/", showSocialLogin 
 
     try {
   // OAuth는 Clerk의 sign-in 페이지로 위임합니다.
-  router.push('/sign-in')
+  redirectToSignIn()
     } catch (err) {
       setMessage({ type: 'error', text: `${provider} 로그인 중 오류가 발생했습니다.` })
       setLoading(false)
@@ -266,9 +267,9 @@ export default function AuthForm({ className, redirectTo = "/", showSocialLogin 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className={cn("w-full max-w-2xl mx-auto p-4", className)}
+      className={cn("flex items-center justify-center min-h-screen py-12 px-4 w-full", className)}
     >
-      <Card className="border-0 shadow-xl bg-card/50 backdrop-blur-xl">
+      <Card className="w-full max-w-md border-0 shadow-xl bg-card/50 backdrop-blur-xl">
         <CardHeader className="space-y-3 pb-6">
           <div className="flex items-center justify-center mb-2">
             <div className="flex items-center space-x-2">

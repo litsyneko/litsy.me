@@ -98,7 +98,7 @@ export default function Navigation() {
               transition={{ duration: 0.12, ease: "easeOut" }}
             >
               <Button asChild size={isMobile ? "sm" : "default"} className="relative overflow-hidden">
-                <Link href="/sign-in">
+                <Link href="/sign-in" className="relative z-10">
                   <span className="relative z-10">로그인</span>
                 </Link>
               </Button>

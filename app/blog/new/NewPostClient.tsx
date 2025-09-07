@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, Lock, AlertCircle, Clock } from 'lucide-react'
 import BlogForm, { type BlogFormData } from '@/components/blog/BlogForm'
-import { saveDraft, loadDraft, clearDraft } from '@/lib/utils/draft'
+import { saveDraft, loadDraft, clearDraft, draftToFormData } from '@/lib/utils/draft'
 import { useUser } from '@clerk/nextjs'
+import { redirectToSignIn } from '@/lib/auth-redirects'
 
 export default function NewPostClient() {
   const { isLoaded, isSignedIn, user } = useUser()
@@ -14,23 +15,43 @@ export default function NewPostClient() {
   const [draftInfo, setDraftInfo] = useState<{ exists: boolean; lastSaved: Date | null }>({ exists: false, lastSaved: null })
   const [postId, setPostId] = useState<string | null>(null)
   const [loadingState, setLoadingState] = useState<boolean>(true)
+  const [forbidden, setForbidden] = useState<boolean>(false)
 
   const router = useRouter()
   const searchParams = useSearchParams()
 
   useEffect(() => {
     if (!isLoaded) return
-    if (!isSignedIn) {
-      setLoadingState(false)
-      return
-    }
 
-    const draft = loadDraft()
-    const urlPostId = searchParams?.get('postId')
+    const run = async () => {
+      setLoadingState(true)
+      setForbidden(false)
 
-    // If URL has postId, try to fetch server draft
-    if (urlPostId) {
-      ;(async () => {
+      if (!isSignedIn) {
+        setLoadingState(false)
+        return
+      }
+
+      // First: quick permission check by calling the blog GET endpoint.
+      // The endpoint returns 403 if the user lacks blog access.
+      try {
+        const permRes = await fetch('/api/blog?mode=all')
+        if (permRes.status === 403) {
+          setForbidden(true)
+          setLoadingState(false)
+          return
+        }
+      } catch (err) {
+        // network errors are non-fatal for permission check; continue
+        console.error('Permission check failed:', err)
+      }
+
+      const draft = loadDraft()
+      const urlPostId = searchParams?.get('postId')
+
+      // If URL has postId, try to fetch server draft and await it so loadingState
+      // remains true until response arrives.
+      if (urlPostId) {
         try {
           const res = await fetch(`/api/blog?postId=${urlPostId}`)
           if (res.ok) {
@@ -47,28 +68,65 @@ export default function NewPostClient() {
         } catch (e) {
           console.error('Failed to fetch post by postId:', e)
         }
-      })()
-    }
-    if (draft) {
-      setInitialFormData({
-        title: draft.title,
-        summary: draft.summary,
-        content: draft.content,
-        tags: draft.tags,
-        cover: draft.cover,
-      })
-      setDraftInfo({ exists: true, lastSaved: new Date(draft.lastSaved) })
-    } else {
-      setDraftInfo({ exists: false, lastSaved: null })
+      }
+
+      if (draft) {
+        setInitialFormData({
+          title: draft.title,
+          summary: draft.summary,
+          content: draft.content,
+          tags: draft.tags,
+          cover: draft.cover,
+        })
+        setDraftInfo({ exists: true, lastSaved: new Date(draft.lastSaved) })
+      } else {
+        setDraftInfo({ exists: false, lastSaved: null })
+      }
+
+      setLoadingState(false)
     }
 
-    setLoadingState(false)
+    run()
+  }, [isLoaded, isSignedIn])
+
+  // Detect transition from signed-out -> signed-in (e.g. after returning from external Clerk flow)
+  const prevSignedInRef = useRef<boolean>(isSignedIn)
+  useEffect(() => {
+    if (!isLoaded) {
+      prevSignedInRef.current = isSignedIn
+      return
+    }
+
+    // When user newly becomes signed in, offer to restore local draft (if any)
+    if (!prevSignedInRef.current && isSignedIn) {
+      try {
+        const local = loadDraft()
+        if (local) {
+          const shouldRestore = window.confirm('로그인 후 로컬에 임시 저장된 초안이 발견되었습니다. 에디터로 불러오시겠습니까?')
+          if (shouldRestore) {
+            setInitialFormData({
+              title: local.title,
+              summary: local.summary,
+              content: local.content,
+              tags: local.tags || [],
+              cover: local.cover || '',
+            })
+            setDraftInfo({ exists: true, lastSaved: new Date(local.lastSaved) })
+            // keep local draft (user can save to server explicitly)
+          }
+        }
+      } catch (e) {
+        console.error('Draft restore check failed:', e)
+      }
+    }
+
+    prevSignedInRef.current = isSignedIn
   }, [isLoaded, isSignedIn])
 
   const handleSubmit = async (formData: BlogFormData) => {
     if (!isSignedIn || !user) {
       alert('로그인이 필요합니다.')
-      router.push('/sign-in')
+      redirectToSignIn()
       return
     }
 
@@ -80,8 +138,9 @@ export default function NewPostClient() {
         content: formData.content,
         tags: formData.tags,
         cover: formData.cover,
-        author: user.fullName || user.firstName || user.username || user.primaryEmailAddress?.emailAddress || '',
   published: true,
+  // author removed: server stores author via user_id field to match DB schema
+  // author: user.fullName || user.firstName || user.username || user.primaryEmailAddress?.emailAddress || '',
   postId: postId || undefined,
       }
 
@@ -146,7 +205,7 @@ export default function NewPostClient() {
         content: formData.content,
         tags: formData.tags,
         cover: formData.cover,
-        author: user.fullName || user.firstName || user.username || user.primaryEmailAddress?.emailAddress || '',
+  // author removed: server stores author via user_id
         published: false,
       }
       if (postId) payload.postId = postId
@@ -202,8 +261,25 @@ export default function NewPostClient() {
             <button onClick={() => router.push('/blog')} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
               블로그 홈으로
             </button>
-            <button onClick={() => router.push('/sign-in')} className="px-4 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors">
+            <button onClick={() => redirectToSignIn()} className="px-4 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors">
               로그인
+            </button>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  if (forbidden) {
+    return (
+      <main className="max-w-3xl mx-auto py-12 px-4">
+        <div className="text-center py-20">
+          <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive" />
+          <h1 className="text-2xl font-bold mb-2">권한이 없습니다</h1>
+          <p className="text-muted-foreground mb-6">블로그 작성 권한이 없습니다. 문의해주세요.</p>
+          <div className="space-x-4">
+            <button onClick={() => router.push('/blog')} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+              블로그 홈으로
             </button>
           </div>
         </div>

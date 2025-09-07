@@ -62,6 +62,10 @@ export default function ClerkProviderClient({ children }: { children: React.Reac
 
   // Build Clerk appearance using theme and CSS variables from the app.
   const appearance: any = {
+  // Ensure Clerk's styles use a dedicated Tailwind layer so they can be
+  // ordered correctly (see Clerk docs: cssLayerName). This avoids
+  // Tailwind <-> Clerk specificity/ordering issues.
+  cssLayerName: 'clerk',
     baseTheme: isDark ? 'dark' : 'light',
     variables: {
       // Use CSS variables defined in the app theme (fallbacks provided)
