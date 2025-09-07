@@ -2,27 +2,47 @@
 
 import React, { useEffect, useState } from 'react'
 
-// Dynamically import ClerkProvider only when a publishable key is present.
-// This avoids the Clerk SDK throwing during build/prerender when the key
-// is not provided in the build environment (e.g., CI without env vars).
+// Dynamically load ClerkProvider only when a publishable key exists. While
+// loading, avoid rendering children unwrapped. If the key is absent (e.g. in
+// CI/build), render children directly so the app can prerender.
 export default function ClerkProviderClient({ children }: { children: React.ReactNode }) {
-  const [ClerkProvider, setClerkProvider] = useState<any>(null)
+  const [ClerkProvider, setClerkProvider] = useState<any | null>(null)
+  const [hasKey, setHasKey] = useState<boolean | null>(null)
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-    if (!key) return
-    // dynamic import ensures we only load the module when running in an
-    // environment where the publishable key exists.
-    import('@clerk/nextjs').then((mod) => {
-      setClerkProvider(() => mod.ClerkProvider)
-    }).catch(() => {
-      // ignore import failures; fallback to rendering children directly
-    })
+    if (!key) {
+      setHasKey(false)
+      return
+    }
+    setHasKey(true)
+    let mounted = true
+    import('@clerk/nextjs')
+      .then((mod) => {
+        if (!mounted) return
+        setClerkProvider(() => mod.ClerkProvider)
+        // Signal that ClerkProvider has been loaded so other components can
+        // safely import Clerk client UI/hooks.
+        try {
+          // @ts-ignore
+          window.__CLERK_PROVIDER_LOADED__ = true
+        } catch (e) {}
+      })
+      .catch(() => {
+        // ignore import failures
+      })
+    return () => { mounted = false }
   }, [])
 
-  // If ClerkProvider wasn't loaded because the env is missing, render children
-  // directly so the app can build/prerender without errors.
-  if (!ClerkProvider) return <>{children}</>
+  // If no key present at runtime, render children so build/CI works.
+  if (hasKey === false) return <>{children}</>
 
-  return <ClerkProvider>{children}</ClerkProvider>
+  // If key exists but ClerkProvider not yet loaded, avoid rendering children
+  // to prevent Clerk hooks from running outside of the provider.
+  if (hasKey === null || (hasKey === true && !ClerkProvider)) {
+    return null
+  }
+
+  const Provider = ClerkProvider
+  return <Provider>{children}</Provider>
 }

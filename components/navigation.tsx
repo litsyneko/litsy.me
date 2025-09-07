@@ -43,16 +43,44 @@ export default function Navigation() {
       const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
       if (!key) return
       let mounted = true
-      import('@clerk/nextjs').then((mod) => {
-        if (!mounted) return
-        setClerkUI({
-          SignedIn: mod.SignedIn,
-          SignedOut: mod.SignedOut,
-          UserButton: mod.UserButton,
-        })
-      }).catch(() => {
-        // ignore; fallback UI will be used
-      })
+      const loadIfProviderReady = async () => {
+        try {
+          // If ClerkProvider has been loaded, the provider component will
+          // set window.__CLERK_PROVIDER_LOADED__ = true. Wait for that flag
+          // before importing Clerk client UI to avoid hooks running outside
+          // of the provider.
+          if ((window as any).__CLERK_PROVIDER_LOADED__) {
+            const mod = await import('@clerk/nextjs')
+            if (!mounted) return
+            setClerkUI({
+              SignedIn: mod.SignedIn,
+              SignedOut: mod.SignedOut,
+              UserButton: mod.UserButton,
+            })
+            return
+          }
+          // Poll until provider loaded (short interval)
+          const id = setInterval(async () => {
+            if ((window as any).__CLERK_PROVIDER_LOADED__) {
+              clearInterval(id)
+              try {
+                const mod = await import('@clerk/nextjs')
+                if (!mounted) return
+                setClerkUI({
+                  SignedIn: mod.SignedIn,
+                  SignedOut: mod.SignedOut,
+                  UserButton: mod.UserButton,
+                })
+              } catch {
+                // ignore import failures; fallback UI will be used
+              }
+            }
+          }, 50)
+        } catch {
+          // ignore
+        }
+      }
+      loadIfProviderReady()
       return () => { mounted = false }
     }, [])
 
@@ -181,7 +209,7 @@ export default function Navigation() {
               <FaXTwitter className="w-5 h-5" />
             </motion.a>
             <motion.a
-              href="mailto:litsy.dev@gmail.com"
+              href="mailto:dev@litsy.me"
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.12, ease: "easeOut" }}
