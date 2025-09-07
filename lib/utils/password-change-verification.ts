@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabase'
+// This file is client-safe: it contains password strength checks and client-side flow helpers.
+// Server-side Clerk calls have been moved to an API route (app/api/profile/password/route.ts).
 
 // 비밀번호 강도 검사
 export function checkPasswordStrength(password: string): {
@@ -86,17 +87,7 @@ export async function requestPasswordChangeWithEmailVerification(
   newPassword: string
 ): Promise<PasswordChangeRequest> {
   try {
-    // 현재 사용자 확인
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError || !user) {
-      return {
-        success: false,
-        message: '로그인이 필요합니다.'
-      }
-    }
-
-    // 비밀번호 강도 검사
+  // 비밀번호 강도 검사
     const strengthCheck = checkPasswordStrength(newPassword)
     
     if (!strengthCheck.isStrong) {
@@ -106,27 +97,28 @@ export async function requestPasswordChangeWithEmailVerification(
       }
     }
 
-    // 재인증 이메일 발송 (Supabase Auth의 reauthentication 기능 사용)
-    const { error: otpError } = await supabase.auth.reauthenticate()
+    // With Clerk, password change is typically a direct update.
+    // The "email verification" part would be handled by Clerk's own email verification flow if needed.
+    // For this direct migration, we assume the user is authenticated and can change their password.
+    // The actual update will happen in confirmPasswordChangeWithToken.
     
-    if (otpError) {
-      console.error('Reauthentication OTP error:', otpError)
-      return {
-        success: false,
-        message: '인증 이메일 발송에 실패했습니다.'
-      }
+    // We will store the new password in a temporary variable or pass it directly to confirmPasswordChangeWithToken
+    // For simplicity in this migration, we'll assume confirmPasswordChangeWithToken will receive the new password directly.
+    // The `tokenHash` and `sessionStorage` are no longer needed.
+
+    // Delegate actual password change flow to server API
+    const resp = await fetch('/api/profile/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newPassword })
+    })
+
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}))
+      return { success: false, message: body.message || '서버에서 비밀번호 변경을 시작하지 못했습니다.' }
     }
 
-    // 새 비밀번호를 임시 저장 (실제로는 세션 스토리지나 메모리에 저장)
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('pending_password_change', newPassword)
-    }
-
-    return {
-      success: true,
-      message: '이메일로 인증 코드를 발송했습니다.',
-      tokenHash: 'pending' // 임시 토큰
-    }
+    return { success: true, message: '비밀번호 변경을 진행할 수 있습니다.' }
   } catch (error) {
     console.error('Password change request error:', error)
     return {
@@ -138,219 +130,73 @@ export async function requestPasswordChangeWithEmailVerification(
 
 // 토큰으로 비밀번호 변경 확인 - 단순화된 버전
 export async function confirmPasswordChangeWithToken(
-  tokenHash: string
+  newPassword: string // New parameter
 ): Promise<PasswordChangeConfirmation> {
   try {
-    // 임시 저장된 새 비밀번호 가져오기
-    const newPassword = typeof window !== 'undefined' 
-      ? sessionStorage.getItem('pending_password_change')
-      : null
-
-    if (!newPassword) {
-      return {
-        success: false,
-        message: '저장된 비밀번호 정보를 찾을 수 없습니다.'
-      }
-    }
-
-    // Supabase Auth를 사용하여 비밀번호 업데이트
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
+    // Call server API to perform the password update (server will call Clerk)
+    const resp = await fetch('/api/profile/password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newPassword })
     })
 
-    if (error) {
-      console.error('Password update error:', error)
-      return {
-        success: false,
-        message: '비밀번호 변경에 실패했습니다.'
-      }
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}))
+      return { success: false, message: body.message || '비밀번호 변경에 실패했습니다.' }
     }
 
-    // 임시 저장된 비밀번호 삭제
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('pending_password_change')
-    }
-
-    return {
-      success: true,
-      message: '비밀번호가 성공적으로 변경되었습니다.'
-    }
+    return { success: true, message: '비밀번호가 성공적으로 변경되었습니다.' }
   } catch (error) {
-    console.error('Password change confirmation error:', error)
+    console.error('Password update error:', error)
     return {
       success: false,
-      message: '비밀번호 변경 확인 중 예상치 못한 오류가 발생했습니다.'
+      message: `비밀번호 변경에 실패했습니다: ${error instanceof Error ? error.message : String(error)}`
     }
+  }
+}
+
+// Check status of any pending password change requests (client wrapper)
+export async function getPasswordChangeStatus(): Promise<PasswordChangeStatus> {
+  try {
+    const resp = await fetch('/api/profile/password/status')
+    if (!resp.ok) return { hasPendingRequest: false, requestedAt: null, expiresAt: null }
+    const body = await resp.json()
+    return { hasPendingRequest: !!body.hasPendingRequest, requestedAt: body.requestedAt || null, expiresAt: body.expiresAt || null }
+  } catch (error) {
+    console.error('getPasswordChangeStatus error:', error)
+    return { hasPendingRequest: false, requestedAt: null, expiresAt: null }
   }
 }
 
 // 비밀번호 변경 상태 확인 - 단순화된 버전
-export async function getPasswordChangeStatus(): Promise<PasswordChangeStatus | null> {
-  try {
-    // 세션 스토리지에서 대기 중인 요청 확인
-    const hasPending = typeof window !== 'undefined' 
-      ? sessionStorage.getItem('pending_password_change') !== null
-      : false
 
-    return {
-      hasPendingRequest: hasPending,
-      requestedAt: hasPending ? new Date().toISOString() : null,
-      expiresAt: hasPending ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null // 15분 후 만료
-    }
-  } catch (error) {
-    console.error('Password change status error:', error)
-    return null
-  }
-}
-
-// OTP 코드로 재인증 확인
-export async function verifyReauthenticationOTP(
-  token: string
-): Promise<{ success: boolean; message: string }> {
-  try {
-    // 현재 사용자의 이메일 필요
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user?.email) {
-      return {
-        success: false,
-        message: '사용자 정보를 찾을 수 없습니다.'
-      }
-    }
-
-    const { error } = await supabase.auth.verifyOtp({
-      token,
-      type: 'email',
-      email: user.email
-    })
-
-    if (error) {
-      console.error('OTP verification error:', error)
-      return {
-        success: false,
-        message: getOTPErrorMessage(error.message)
-      }
-    }
-
-    return {
-      success: true,
-      message: '재인증이 완료되었습니다.'
-    }
-  } catch (error) {
-    console.error('OTP verification error:', error)
-    return {
-      success: false,
-      message: 'OTP 인증 중 오류가 발생했습니다.'
-    }
-  }
-}
-
-// 기존 비밀번호로 재인증 (민감한 작업 전)
-export async function reauthenticateWithPassword(
-  currentPassword: string
-): Promise<{ success: boolean; message: string }> {
-  try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError || !user?.email) {
-      return {
-        success: false,
-        message: '사용자 정보를 확인할 수 없습니다.'
-      }
-    }
-
-    // 현재 비밀번호로 재로그인 시도
-    const { error } = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password: currentPassword
-    })
-
-    if (error) {
-      return {
-        success: false,
-        message: '현재 비밀번호가 올바르지 않습니다.'
-      }
-    }
-
-    return {
-      success: true,
-      message: '재인증이 완료되었습니다.'
-    }
-  } catch (error) {
-    console.error('Password reauthentication error:', error)
-    return {
-      success: false,
-      message: '재인증 중 오류가 발생했습니다.'
-    }
-  }
-}
-
-// OTP 에러 메시지 변환
-function getOTPErrorMessage(errorMessage: string): string {
-  switch (errorMessage) {
-    case 'Token has expired or is invalid':
-      return 'OTP 코드가 만료되었거나 유효하지 않습니다.'
-    case 'Invalid token':
-      return 'OTP 코드가 올바르지 않습니다.'
-    case 'Too many requests':
-      return '너무 많은 요청을 보내셨습니다. 잠시 후 다시 시도해주세요.'
-    default:
-      return 'OTP 인증에 실패했습니다.'
-  }
-}
 
 // 비밀번호 변경 플로우 전체 관리
 export class PasswordChangeFlow {
-  private tokenHash: string | null = null
-  private pendingRequest: boolean = false
+  // The state (tokenHash, pendingRequest) is no longer directly managed here
+  // as the flow is simplified to direct password change.
 
-  // 1단계: 비밀번호 변경 요청
+  // 1단계: 비밀번호 변경 요청 (실제로는 인증 확인 및 강도 검사)
   async requestChange(newPassword: string): Promise<{ success: boolean; message: string }> {
     const result = await requestPasswordChangeWithEmailVerification(newPassword)
-    
-    if (result.success && result.tokenHash) {
-      this.tokenHash = result.tokenHash
-      this.pendingRequest = true
-    }
-    
-    return {
-      success: result.success,
-      message: result.message
-    }
+    // No tokenHash or pendingRequest state to manage here
+    return result
   }
 
-  // 2단계: OTP 인증
-  async verifyOTP(otpCode: string): Promise<{ success: boolean; message: string }> {
-    const otpResult = await verifyReauthenticationOTP(otpCode)
-    
-    if (!otpResult.success) {
-      return otpResult
-    }
-
-    // OTP 인증 성공 후 토큰으로 비밀번호 변경 완료
-    if (this.tokenHash) {
-      const confirmResult = await confirmPasswordChangeWithToken(this.tokenHash)
-      
-      if (confirmResult.success) {
-        this.reset()
-      }
-      
-      return confirmResult
-    }
-
-    return {
-      success: false,
-      message: '비밀번호 변경 토큰을 찾을 수 없습니다.'
-    }
+  // 2단계: 비밀번호 변경 확인 (실제 비밀번호 업데이트)
+  async confirmChange(newPassword: string): Promise<{ success: boolean; message: string }> { // Renamed from verifyOTP, takes newPassword directly
+    const result = await confirmPasswordChangeWithToken(newPassword) // Pass newPassword directly
+    // No state to reset here, as it's a direct operation
+    return result
   }
 
-  // 상태 초기화
+  // 상태 초기화 (if needed for external management)
   reset(): void {
-    this.tokenHash = null
-    this.pendingRequest = false
+    // No internal state to reset
   }
 
-  // 현재 상태 확인
+  // 현재 상태 확인 (if needed for external management)
   get hasPendingRequest(): boolean {
-    return this.pendingRequest
+    return false // No pending request state managed internally
   }
 }

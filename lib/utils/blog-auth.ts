@@ -1,4 +1,4 @@
-import { createSupabaseClient } from '@/lib/supabase'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 
 // 블로그 작성 권한이 있는 Discord 사용자 목록
 const AUTHORIZED_DISCORD_USERS = [
@@ -18,28 +18,32 @@ export interface BlogAuthUser {
  * 현재 사용자의 블로그 작성 권한을 확인합니다.
  */
 export async function checkBlogWritePermission(): Promise<BlogAuthUser | null> {
-  const supabase = createSupabaseClient()
-  
   try {
-    const { data: { user }, error } = await supabase.auth.getUser()
+    const { userId } = auth();
     
-    if (error || !user) {
+    if (!userId) {
       return null
     }
 
-    // Discord 메타데이터에서 사용자명과 ID 확인
-    const discordUsername = user.user_metadata?.preferred_username || user.user_metadata?.username
-    const discordId = user.user_metadata?.provider_id || user.user_metadata?.sub
+    const clerkUser = await clerkClient.users.getUser(userId);
+
+    if (!clerkUser) {
+      return null
+    }
+
+    // Assuming Discord metadata is stored in publicMetadata or privateMetadata
+    const discordUsername = clerkUser.username || clerkUser.publicMetadata?.discord_username || null;
+    const discordId = clerkUser.publicMetadata?.discord_id || null; // Assuming discord_id is stored
 
     // 권한 확인
     const canWriteBlog = AUTHORIZED_DISCORD_USERS.includes(discordUsername) || 
-                        AUTHORIZED_DISCORD_USERS.includes(discordId)
+                        AUTHORIZED_DISCORD_USERS.includes(clerkUser.id) // Use Clerk's user ID
 
     return {
-      id: user.id,
-      email: user.email,
-      discord_username: discordUsername,
-      discord_id: discordId,
+      id: clerkUser.id,
+      email: clerkUser.emailAddresses?.[0]?.emailAddress || undefined,
+      discord_username: discordUsername || undefined,
+      discord_id: discordId || undefined,
       can_write_blog: canWriteBlog
     }
   } catch (error) {

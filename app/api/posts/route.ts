@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient, supabaseServiceRole } from '@/lib/supabase-server'
-// import { createSupabaseClient } from '@/lib/supabase' // 이제 필요 없음
 import { BlogService } from '@/lib/services/blog'
-import { UserProfile } from '@/lib/supabase' // UserProfile 타입 가져오기
+import { auth, clerkClient } from '@clerk/nextjs/server'
 
 // 블로그 작성 권한이 있는 Discord 사용자 목록 (또는 users.role 활용)
 const AUTHORIZED_DISCORD_USERS = [
@@ -11,45 +9,41 @@ const AUTHORIZED_DISCORD_USERS = [
 ]
 
 // 권한 확인 헬퍼 함수
-async function checkBlogWritePermission(): Promise<{ hasPermission: boolean; user: UserProfile | null; error: string | null }> {
-  const supabase = createSupabaseServerClient() // 세션 관리를 위한 클라이언트
-  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser() // supabase-server 사용
+async function checkBlogWritePermission(): Promise<{ hasPermission: boolean; user: any | null; error: string | null }> { // Changed UserProfile to any for now
+  const { userId } = auth();
   
-  if (authError || !authUser) {
+  if (!userId) {
     return { hasPermission: false, user: null, error: 'Unauthorized' }
   }
 
-  // public.users 테이블에서 사용자 프로필 정보 조회
-  const { data: userProfile, error: profileError } = await supabase
-    .from('users')
-    .select('id, email, username, display_name, avatar, role')
-    .eq('id', authUser.id)
-    .single()
-
-  if (profileError || !userProfile) {
+  const clerkUser = await clerkClient.users.getUser(userId);
+  
+  if (!clerkUser) {
     return { hasPermission: false, user: null, error: 'User profile not found' }
   }
 
-  // 역할 기반 권한 확인 (예: 'admin' 또는 특정 'user' 역할)
-  const hasPermission = userProfile.role === 'admin' || 
-                        AUTHORIZED_DISCORD_USERS.includes(userProfile.username || '') ||
-                        AUTHORIZED_DISCORD_USERS.includes(authUser.id)
+  // Map Clerk user data to a simplified user object for consistency
+  const user: any = { // Using any for now, can define a proper type later
+    id: clerkUser.id,
+    email: clerkUser.emailAddresses?.[0]?.emailAddress || '',
+    username: clerkUser.username || clerkUser.emailAddresses?.[0]?.emailAddress || null,
+    display_name: clerkUser.firstName && clerkUser.lastName ? `${clerkUser.firstName} ${clerkUser.lastName}` : clerkUser.username || clerkUser.emailAddresses?.[0]?.emailAddress || null,
+    avatar: clerkUser.imageUrl || null,
+    role: (clerkUser.publicMetadata?.role as string) || 'user', // Assuming role is in publicMetadata
+    created_at: clerkUser.createdAt ? new Date(clerkUser.createdAt).toISOString() : new Date().toISOString(),
+    updated_at: clerkUser.updatedAt ? new Date(clerkUser.updatedAt).toISOString() : new Date().toISOString(),
+    bio: (clerkUser.publicMetadata?.bio as string) || null,
+    website: (clerkUser.publicMetadata?.website as string) || null,
+    location: (clerkUser.publicMetadata?.location as string) || null,
+  };
+
+  const hasPermission = user.role === 'admin' || 
+                        AUTHORIZED_DISCORD_USERS.includes(user.username || '') ||
+                        AUTHORIZED_DISCORD_USERS.includes(user.id) // Use user.id from Clerk
   
   return { 
     hasPermission,
-    user: {
-      id: userProfile.id,
-      email: userProfile.email,
-      username: userProfile.username,
-      display_name: userProfile.display_name,
-      avatar: userProfile.avatar,
-      bio: null, // 필요시 추가
-      website: null, // 필요시 추가
-      location: null, // 필요시 추가
-      role: userProfile.role,
-      created_at: authUser.created_at,
-      updated_at: userProfile.updated_at || authUser.updated_at
-    },
+    user: user,
     error: hasPermission ? null : 'Forbidden: Blog write permission required'
   }
 }

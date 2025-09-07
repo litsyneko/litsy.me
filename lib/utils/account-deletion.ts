@@ -1,5 +1,3 @@
-import { supabase } from '@/lib/supabase'
-
 export interface AccountDeletionRequest {
   success: boolean
   message: string
@@ -14,157 +12,51 @@ export interface AccountDeletionConfirmation {
 // 계정 삭제 요청 (이메일 인증 필요)
 export async function requestAccountDeletion(): Promise<AccountDeletionRequest> {
   try {
-    // 현재 사용자 확인
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError || !user) {
-      return {
-        success: false,
-        message: '로그인이 필요합니다.'
-      }
+    const resp = await fetch('/api/profile/delete', { method: 'POST' })
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}))
+      return { success: false, message: body.message || '계정 삭제를 시작하지 못했습니다.' }
     }
-
-    // 계정 삭제 요청을 위한 재인증 OTP 발송
-    const { error: otpError } = await supabase.auth.reauthenticate()
-    
-    if (otpError) {
-      console.error('Account deletion OTP error:', otpError)
-      return {
-        success: false,
-        message: '계정 삭제 인증 이메일 발송에 실패했습니다.'
-      }
-    }
-
-    return {
-      success: true,
-      message: '계정 삭제 확인을 위한 이메일을 발송했습니다.',
-      requiresConfirmation: true
-    }
+    return { success: true, message: '계정 삭제를 진행할 수 있습니다.', requiresConfirmation: true }
   } catch (error) {
     console.error('Account deletion request error:', error)
-    return {
-      success: false,
-      message: '계정 삭제 요청 중 예상치 못한 오류가 발생했습니다.'
-    }
+    return { success: false, message: '계정 삭제 요청 중 예상치 못한 오류가 발생했습니다.' }
   }
 }
 
 // OTP 코드로 계정 삭제 확인 - RPC 호출로 변경
-export async function confirmAccountDeletion(
-  otpCode: string
-): Promise<AccountDeletionConfirmation> {
+export async function confirmAccountDeletion(): Promise<AccountDeletionConfirmation> {
   try {
-    // OTP 인증 - 현재 사용자의 이메일 필요
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user?.email) {
-      return {
-        success: false,
-        message: '사용자 정보를 찾을 수 없습니다.'
-      }
+    const resp = await fetch('/api/profile/delete', { method: 'DELETE' })
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}))
+      return { success: false, message: body.message || '계정 삭제에 실패했습니다.' }
     }
-
-    const { error: otpError } = await supabase.auth.verifyOtp({
-      token: otpCode,
-      type: 'email',
-      email: user.email
-    })
-
-    if (otpError) {
-      console.error('OTP verification error:', otpError)
-      return {
-        success: false,
-        message: getOTPErrorMessage(otpError.message)
-      }
-    }
-
-    // Supabase RPC를 사용하여 서버 사이드 함수 호출
-    const { data, error: rpcError } = await supabase.rpc('delete_user_account')
-
-    if (rpcError) {
-      console.error('RPC error deleting account:', rpcError)
-      return {
-        success: false,
-        message: '계정 삭제 중 서버 오류가 발생했습니다.'
-      }
-    }
-    
-    // RPC 함수의 반환값은 { success: boolean, message: string } 형태의 행을 포함하는 배열입니다.
-    const resultData = data as Array<{ success: boolean; message: string }>;
-    const result = resultData?.[0];
-
-    if (result && result.success === false) {
-      return {
-        success: false,
-        message: result.message || '계정 삭제에 실패했습니다.'
-      }
-    }
-
-    return {
-      success: true,
-      message: '계정이 성공적으로 삭제되었습니다.'
-    }
+    return { success: true, message: '계정이 성공적으로 삭제되었습니다.' }
   } catch (error) {
     console.error('Account deletion confirmation error:', error)
-    return {
-      success: false,
-      message: '계정 삭제 확인 중 예상치 못한 오류가 발생했습니다.'
+    return { success: false, message: `계정 삭제 확인 중 예상치 못한 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}` }
+  }
+}
+
+// Reauthenticate user before deletion if needed. Client-side wrapper that
+// calls server endpoint to verify current authentication/reauth state.
+export async function reauthenticateForDeletion(): Promise<{ success: boolean; message: string }> {
+  try {
+    const resp = await fetch('/api/profile/delete', { method: 'POST' })
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}))
+      return { success: false, message: body.message || '재인증에 실패했습니다.' }
     }
+    return { success: true, message: '재인증 완료' }
+  } catch (error) {
+    console.error('reauthenticateForDeletion error:', error)
+    return { success: false, message: '서버 오류' }
   }
 }
 
 // 현재 비밀번호로 재인증 (계정 삭제 전)
-export async function reauthenticateForDeletion(
-  currentPassword: string
-): Promise<{ success: boolean; message: string }> {
-  try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError || !user?.email) {
-      return {
-        success: false,
-        message: '사용자 정보를 확인할 수 없습니다.'
-      }
-    }
 
-    // 현재 비밀번호로 재로그인 시도
-    const { error } = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password: currentPassword
-    })
-
-    if (error) {
-      return {
-        success: false,
-        message: '현재 비밀번호가 올바르지 않습니다.'
-      }
-    }
-
-    return {
-      success: true,
-      message: '재인증이 완료되었습니다.'
-    }
-  } catch (error) {
-    console.error('Password reauthentication error:', error)
-    return {
-      success: false,
-      message: '재인증 중 오류가 발생했습니다.'
-    }
-  }
-}
-
-// OTP 에러 메시지 변환
-function getOTPErrorMessage(errorMessage: string): string {
-  switch (errorMessage) {
-    case 'Token has expired or is invalid':
-      return 'OTP 코드가 만료되었거나 유효하지 않습니다.'
-    case 'Invalid token':
-      return 'OTP 코드가 올바르지 않습니다.'
-    case 'Too many requests':
-      return '너무 많은 요청을 보내셨습니다. 잠시 후 다시 시도해주세요.'
-    default:
-      return 'OTP 인증에 실패했습니다.'
-  }
-}
 
 // 계정 삭제 플로우 전체 관리
 export class AccountDeletionFlow {
@@ -184,9 +76,9 @@ export class AccountDeletionFlow {
     }
   }
 
-  // 2단계: OTP 인증 및 계정 삭제
-  async confirmDeletion(otpCode: string): Promise<{ success: boolean; message: string }> {
-    const result = await confirmAccountDeletion(otpCode)
+  // 2단계: 계정 삭제
+  async confirmDeletion(): Promise<{ success: boolean; message: string }> { // Removed otpCode parameter
+    const result = await confirmAccountDeletion() // Removed otpCode argument
     
     if (result.success) {
       this.reset()

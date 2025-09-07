@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getDiscordUsername } from '@/lib/discord'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 
 export async function GET(request: Request) {
   try {
@@ -94,15 +95,23 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    // If client provided an author id (from sync), prefer that and write via admin client
-    const author_id = (body.author_id) || null
+    const { userId } = auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const clerkUser = await clerkClient.users.getUser(userId);
+    if (!clerkUser) {
+      return NextResponse.json({ error: 'User not found in Clerk' }, { status: 404 });
+    }
+
     const row: any = { 
       post_id, 
-      author_name: author_name?.trim() || 'Anonymous', 
-      author_avatar, 
+      author_name: clerkUser.firstName && clerkUser.lastName ? `${clerkUser.firstName} ${clerkUser.lastName}` : clerkUser.username || clerkUser.emailAddresses?.[0]?.emailAddress || 'Anonymous', 
+      author_avatar: clerkUser.imageUrl || null, 
       content: content.trim() 
     }
-    if (author_id) row.author_id = author_id
+    row.author_id = userId; // Use Clerk's userId as author_id
 
     // write with admin client to ensure author_id and constraints are enforced
     const { data, error } = await supabaseAdmin.from('comments').insert([row]).select()
@@ -114,16 +123,14 @@ export async function POST(request: Request) {
       }, { status: 500 })
     }
 
-    // return inserted rows normalized with author info from users table
+    // return inserted rows normalized with author info from Clerk user
     const inserted = Array.isArray(data) ? data[0] : data
-    const { data: userRows } = await supabaseAdmin.from('users').select('*').eq('id', inserted.author_id).limit(1)
-    const user = (userRows && userRows[0]) || null
     const result = {
       id: inserted.id,
       post_id: inserted.post_id,
-      author_id: inserted.author_id || (user && user.id) || null,
-      author_name: inserted.author_name || (user && (user.display_name || user.username)) || 'Anonymous',
-      author_avatar: inserted.author_avatar || (user && user.avatar) || null,
+      author_id: userId,
+      author_name: row.author_name, // Use the name derived from Clerk
+      author_avatar: row.author_avatar, // Use the avatar derived from Clerk
       content: inserted.content,
       created_at: inserted.created_at,
     }

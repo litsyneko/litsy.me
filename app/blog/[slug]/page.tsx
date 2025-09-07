@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { supabaseServer as supabase } from '@/lib/supabase-server'
+import { supabaseServiceRole as supabase } from '@/lib/supabase-server'
 import BlogDetail from '@/components/blog/BlogDetail'
 import { normalizePost } from '@/lib/utils/blog'
 

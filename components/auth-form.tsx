@@ -11,19 +11,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { motion } from "framer-motion"
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  Phone, 
-  User, 
-  Shield, 
-  CheckCircle, 
-  XCircle, 
-  AlertCircle
-  // 비밀번호 재설정은 Clerk의 UI로 위임합니다.
-  router.push('/sign-in')
+import { cn } from "@/lib/utils"
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  Phone,
+  User,
+  Shield,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+} from "lucide-react"
+
+interface AuthFormProps {
+  className?: string
+  redirectTo?: string
+  showSocialLogin?: boolean
+}
+
+export default function AuthForm({ className, redirectTo = "/", showSocialLogin = true }: AuthFormProps) {
+  const [activeTab, setActiveTab] = useState<"signin" | "signup" | "recovery">("signin")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [fullName, setFullName] = useState("")
+  const [nickname, setNickname] = useState("")
   const [usernameField, setUsernameField] = useState("")
   const [phone, setPhone] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -32,7 +46,7 @@ import {
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
   const [passwordStrength, setPasswordStrength] = useState(0)
   const [useEmailLogin, setUseEmailLogin] = useState(true) // true: email+password, false: magic link
-  
+
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
 
@@ -49,7 +63,7 @@ import {
     if (/[A-Z]/.test(password)) strength += 1
     if (/[0-9]/.test(password)) strength += 1
     if (/[^A-Za-z0-9]/.test(password)) strength += 1
-    
+
     setPasswordStrength(strength)
   }, [password])
 

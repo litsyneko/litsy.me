@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase-server'
+import { clerkClient } from '@clerk/nextjs/server'
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -9,11 +9,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ available: false, error: 'username required' }, { status: 400 })
   }
 
-  // assumes profiles table has username column
-  const { data, error } = await supabaseServer.from('profiles').select('id').eq('username', username).limit(1)
-  if (error) {
-    return NextResponse.json({ available: false, error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ available: (data?.length || 0) === 0 })
+  const users = await clerkClient.users.getUserList({ username: username });
+  
+  // Clerk's getUserList returns an array of users. If the array is empty, the username is available.
+  return NextResponse.json({ available: users.totalCount === 0 });
 }

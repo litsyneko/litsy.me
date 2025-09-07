@@ -32,12 +32,12 @@ export interface UserProfileData {
   is_discord_account: boolean
 }
 
-// 프로필 정보 업데이트
 export async function updateUserProfile(
   updates: ProfileUpdateData
 ): Promise<ProfileUpdateResult> {
   try {
-    const { userId } = auth();
+  const session = await auth();
+  const userId = (session as any)?.userId || (session as any)?.user?.id
     
     if (!userId) {
       return {
@@ -46,7 +46,6 @@ export async function updateUserProfile(
       }
     }
 
-    // 입력 데이터 검증
     const validationResult = validateProfileData(updates)
     if (!validationResult.isValid) {
       return {
@@ -55,10 +54,10 @@ export async function updateUserProfile(
       }
     }
 
-    // username 중복 확인 (변경된 경우만)
-    if (updates.username) { // Check if username is provided in updates
-      const currentUser = await clerkClient.users.getUser(userId);
-      if (updates.username !== currentUser.username) { // Only check if username is actually changed
+    if (updates.username) {
+      const clerk = await clerkClient();
+      const currentUser = await clerk.users.getUser(userId);
+      if (updates.username !== currentUser.username) {
         const isAvailable = await checkUsernameAvailability(updates.username)
         if (!isAvailable) {
           return {
@@ -69,12 +68,9 @@ export async function updateUserProfile(
       }
     }
 
-    // Prepare data for Clerk's updateUser
     const clerkUpdates: any = {};
     if (updates.username !== undefined) clerkUpdates.username = updates.username;
     if (updates.avatar_url !== undefined) clerkUpdates.imageUrl = updates.avatar_url;
-    // Clerk does not have direct 'nickname' or 'full_name' fields.
-    // These should be stored in publicMetadata if needed.
     const publicMetadata: any = {};
     if (updates.nickname !== undefined) publicMetadata.nickname = updates.nickname;
     if (updates.full_name !== undefined) publicMetadata.full_name = updates.full_name;
@@ -85,8 +81,8 @@ export async function updateUserProfile(
       clerkUpdates.publicMetadata = publicMetadata;
     }
 
-    // Update user in Clerk
-    await clerkClient.users.updateUser(userId, clerkUpdates);
+  const clerk = await clerkClient();
+  await clerk.users.updateUser(userId, clerkUpdates);
 
     return {
       success: true,
@@ -102,38 +98,38 @@ export async function updateUserProfile(
   }
 }
 
-// 사용자 프로필 데이터 가져오기
 export async function getUserProfileData(): Promise<UserProfileData | null> {
   try {
-    const { userId } = auth();
-    
-    if (!userId) {
+  const session = await auth();
+  const userId = (session as any)?.userId || (session as any)?.user?.id
+
+  if (!userId) {
       return null
     }
 
-    const clerkUser = await clerkClient.users.getUser(userId);
+  const clerk = await clerkClient();
+  const clerkUser = await clerk.users.getUser(userId);
 
     if (!clerkUser) {
       return null
     }
 
-    // Map Clerk user data to UserProfileData
-    const isDiscordAccount = (clerkUser.publicMetadata?.provider as string) === 'discord'; // Assuming provider is stored in publicMetadata
+    const isDiscordAccount = (clerkUser.publicMetadata?.provider as string) === 'discord';
 
     return {
       id: clerkUser.id,
       email: clerkUser.emailAddresses?.[0]?.emailAddress || '',
-      nickname: (clerkUser.publicMetadata?.nickname as string) || (clerkUser.publicMetadata?.name as string) || null,
-      username: clerkUser.username || null,
-      avatar_url: clerkUser.imageUrl || null,
-      full_name: (clerkUser.publicMetadata?.full_name as string) || null,
-      website: (clerkUser.publicMetadata?.website as string) || null,
-      bio: (clerkUser.publicMetadata?.bio as string) || null,
+  nickname: (clerkUser.publicMetadata?.nickname as string) ?? (clerkUser.publicMetadata?.name as string) ?? undefined,
+  username: clerkUser.username ?? undefined,
+  avatar_url: clerkUser.imageUrl ?? undefined,
+  full_name: (clerkUser.publicMetadata?.full_name as string) ?? undefined,
+  website: (clerkUser.publicMetadata?.website as string) ?? undefined,
+  bio: (clerkUser.publicMetadata?.bio as string) ?? undefined,
       created_at: clerkUser.createdAt ? new Date(clerkUser.createdAt).toISOString() : new Date().toISOString(),
       updated_at: clerkUser.updatedAt ? new Date(clerkUser.updatedAt).toISOString() : new Date().toISOString(),
-      email_confirmed_at: clerkUser.emailAddresses?.[0]?.verification?.status === 'verified' ? new Date().toISOString() : null, // Clerk doesn't expose this directly, assuming verified if status is 'verified'
-      last_sign_in_at: clerkUser.lastSignInAt ? new Date(clerkUser.lastSignInAt).toISOString() : null,
-      provider: (clerkUser.publicMetadata?.provider as string) || 'email', // Assuming provider is stored in publicMetadata
+  email_confirmed_at: clerkUser.emailAddresses?.[0]?.verification?.status === 'verified' ? new Date().toISOString() : undefined,
+  last_sign_in_at: clerkUser.lastSignInAt ? new Date(clerkUser.lastSignInAt).toISOString() : undefined,
+      provider: (clerkUser.publicMetadata?.provider as string) || 'email',
       is_discord_account: isDiscordAccount
     }
   } catch (error) {
@@ -142,25 +138,21 @@ export async function getUserProfileData(): Promise<UserProfileData | null> {
   }
 }
 
-// username 사용 가능 여부 확인
 export async function checkUsernameAvailability(username: string): Promise<boolean> {
   try {
     if (!username || username.length < 3) {
       return false
     }
 
-    const { userId } = auth(); // Get current user ID from Clerk
+  const session = await auth();
+  const userId = (session as any)?.userId || (session as any)?.user?.id
 
-    // Check for existing username in Clerk
-    const usersWithUsername = await clerkClient.users.getUserList({ username: username });
+  const clerk = await clerkClient();
+  const usersWithUsername = await clerk.users.getUserList({ username: username } as any);
 
-    // If no users found with this username, it's available.
-    // If a user is found, check if it's the current user.
     if (usersWithUsername.totalCount === 0) {
-      return true; // Username is available
+      return true;
     } else {
-      // If a user is found, and it's the current user, then the username is available for them.
-      // Otherwise, it's taken.
       return usersWithUsername.data.some(user => user.id === userId);
     }
   } catch (error) {
@@ -169,27 +161,22 @@ export async function checkUsernameAvailability(username: string): Promise<boole
   }
 }
 
-// 프로필 데이터 검증
-function validateProfileData(data: ProfileUpdateData): { isValid: boolean; message: string } {
-  // nickname 검증
+export function validateProfileData(data: ProfileUpdateData): { isValid: boolean; message: string } {
   if (data.nickname !== undefined) {
     if (data.nickname.length > 50) {
       return { isValid: false, message: '닉네임은 50자를 초과할 수 없습니다.' }
     }
   }
 
-  // username 검증
   if (data.username !== undefined) {
     if (data.username.length < 3 || data.username.length > 30) {
       return { isValid: false, message: 'username은 3-30자 사이여야 합니다.' }
     }
-    
     if (!/^[a-zA-Z0-9_-]+$/.test(data.username)) {
       return { isValid: false, message: 'username은 영문, 숫자, _, - 만 사용할 수 있습니다.' }
     }
   }
 
-  // website URL 검증
   if (data.website !== undefined && data.website.length > 0) {
     try {
       new URL(data.website)
@@ -198,7 +185,6 @@ function validateProfileData(data: ProfileUpdateData): { isValid: boolean; messa
     }
   }
 
-  // bio 검증
   if (data.bio !== undefined && data.bio.length > 500) {
     return { isValid: false, message: '자기소개는 500자를 초과할 수 없습니다.' }
   }
@@ -206,7 +192,6 @@ function validateProfileData(data: ProfileUpdateData): { isValid: boolean; messa
   return { isValid: true, message: '' }
 }
 
-// 사용자 표시 이름 가져오기
 export function getUserDisplayName(user: any): string {
   if (user?.publicMetadata?.nickname) return user.publicMetadata.nickname;
   if (user?.firstName && user?.lastName) return `${user.firstName} ${user.lastName}`;
@@ -215,12 +200,10 @@ export function getUserDisplayName(user: any): string {
   return 'User';
 }
 
-// 사용자 아바타 URL 가져오기
 export function getUserAvatarUrl(user: any): string | null {
   return user?.imageUrl || null;
 }
 
-// 사용자 이니셜 가져오기
 export function getUserInitials(user: any): string {
   if (user?.firstName) {
     return user.firstName.charAt(0).toUpperCase();
@@ -231,15 +214,13 @@ export function getUserInitials(user: any): string {
   return '?';
 }
 
-// 계정 타입 확인
-export function getAccountType(user: any): 'oauth' | 'email' { // Changed 'discord' to 'oauth' as Clerk supports many OAuth providers
-  if (user?.publicMetadata?.provider === 'discord') return 'oauth'; // If specifically Discord
-  if (user?.externalAccounts && user.externalAccounts.length > 0) return 'oauth'; // If any external account
+export function getAccountType(user: any): 'oauth' | 'email' {
+  if (user?.publicMetadata?.provider === 'discord') return 'oauth';
+  if (user?.externalAccounts && user.externalAccounts.length > 0) return 'oauth';
   if (user?.emailAddresses && user.emailAddresses.length > 0) return 'email';
-  return 'email'; // Default to email
+  return 'email';
 }
 
-// 프로필 완성도 계산
 export function calculateProfileCompleteness(user: any): {
   percentage: number
   missingFields: string[]

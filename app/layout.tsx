@@ -1,11 +1,11 @@
 import { ClerkProvider } from '@clerk/nextjs'
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import Navigation from "@/components/navigation";
 import { Toaster } from "sonner";
 
-const inter = Inter({ subsets: ["latin"] });
+// Using a standard Google Fonts <link> instead of next/font to avoid Next 15 API
+// mismatches in this project environment.
 
 export const metadata = {
   title: 'Create Next App',
@@ -23,7 +23,7 @@ export default function RootLayout({
         <head>
           <meta name="naver-site-verification" content="46a4cc0ec327f438b21ecdce34934a76db0fe86f" />
         </head>
-        <body className={inter.className}>
+  <body>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"

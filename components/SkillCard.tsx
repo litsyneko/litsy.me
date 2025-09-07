@@ -12,7 +12,8 @@ interface SkillCardProps {
   };
   index: number;
   globalMousePosition: { x: number; y: number };
-  skillsRef: React.RefObject<HTMLDivElement>;
+  // Accept the nullable ref shape produced by useRef<HTMLDivElement>(null)
+  skillsRef: React.RefObject<HTMLDivElement | null>;
 }
 
 const SkillCard: React.FC<SkillCardProps> = ({
