@@ -8,7 +8,9 @@ import { Menu, X, Github, Mail, User, LogOut, Settings } from "lucide-react"
 import { FaXTwitter } from "react-icons/fa6"
 import { motion, AnimatePresence } from "framer-motion"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+// Clerk UI components are dynamic-imported at runtime to avoid importing
+// them during build/prerender when the publishable key may be missing.
+// This prevents errors like "SignedIn can only be used within the <ClerkProvider />".
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
@@ -34,25 +36,63 @@ export default function Navigation() {
   }, [pathname])
 
   const AuthButton = ({ isMobile = false }: { isMobile?: boolean }) => {
+    // local state to hold dynamically loaded Clerk UI components
+    const [clerkUI, setClerkUI] = useState<any>(null)
+
+    useEffect(() => {
+      const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+      if (!key) return
+      let mounted = true
+      import('@clerk/nextjs').then((mod) => {
+        if (!mounted) return
+        setClerkUI({
+          SignedIn: mod.SignedIn,
+          SignedOut: mod.SignedOut,
+          UserButton: mod.UserButton,
+        })
+      }).catch(() => {
+        // ignore; fallback UI will be used
+      })
+      return () => { mounted = false }
+    }, [])
+
+    if (clerkUI) {
+      const { SignedIn, SignedOut, UserButton } = clerkUI
+      return (
+        <>
+          <SignedIn>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
+          <SignedOut>
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.12, ease: "easeOut" }}
+            >
+              <Button asChild size={isMobile ? "sm" : "default"} className="relative overflow-hidden">
+                <Link href="/sign-in">
+                  <span className="relative z-10">로그인</span>
+                </Link>
+              </Button>
+            </motion.div>
+          </SignedOut>
+        </>
+      )
+    }
+
+    // Fallback when Clerk isn't available at build/prerender time
     return (
-      <>
-        <SignedIn>
-          <UserButton afterSignOutUrl="/" />
-        </SignedIn>
-        <SignedOut>
-          <motion.div
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ duration: 0.12, ease: "easeOut" }}
-          >
-            <Button asChild size={isMobile ? "sm" : "default"} className="relative overflow-hidden">
-              <Link href="/sign-in">
-                <span className="relative z-10">로그인</span>
-              </Link>
-            </Button>
-          </motion.div>
-        </SignedOut>
-      </>
+      <motion.div
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ duration: 0.12, ease: "easeOut" }}
+      >
+        <Button asChild size={isMobile ? "sm" : "default"} className="relative overflow-hidden">
+          <Link href="/sign-in">
+            <span className="relative z-10">로그인</span>
+          </Link>
+        </Button>
+      </motion.div>
     )
   }
 
