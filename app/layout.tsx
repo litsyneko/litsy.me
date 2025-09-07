@@ -17,13 +17,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // RootLayout must render <html> and <body> at the top level (server component).
+  // Place client-only ClerkProvider inside <body> so Next can detect root tags.
   return (
-    <ClerkProviderClient>
-      <html lang="ko" suppressHydrationWarning>
-        <head>
-          <meta name="naver-site-verification" content="46a4cc0ec327f438b21ecdce34934a76db0fe86f" />
-        </head>
-        <body>
+    <html lang="ko" suppressHydrationWarning>
+      <head>
+        <meta name="naver-site-verification" content="46a4cc0ec327f438b21ecdce34934a76db0fe86f" />
+      </head>
+      <body>
+        <ClerkProviderClient>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -36,8 +38,8 @@ export default function RootLayout({
             </main>
             <Toaster />
           </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProviderClient>
+        </ClerkProviderClient>
+      </body>
+    </html>
   )
 }
