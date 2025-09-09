@@ -1,5 +1,17 @@
 import { NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
+import { randomUUID } from 'crypto'
+
+function slugify(text: string) {
+  return text
+    .toString()
+    .normalize('NFKD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
 import { supabaseServiceRole } from '@/lib/supabase-server'
 
 export async function POST(req: Request) {
@@ -57,13 +69,12 @@ export async function POST(req: Request) {
       }
 
       const newUserPayload: any = {
+  id: randomUUID(),
         email: attemptedEmail,
         username: (clerkUser as any)?.username || null,
         display_name: (clerkUser as any)?.firstName || (clerkUser as any)?.fullName || null,
         avatar: null,
-        bio: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+  // Do not set timestamps here; let the DB defaults/triggers populate them.
       }
 
       const { data: createdUser, error: createErr } = await supabaseServiceRole
@@ -94,16 +105,35 @@ export async function POST(req: Request) {
       data = res.data
       error = res.error
     } else {
+      // Ensure slug exists (DB requires non-null slug)
+      const slugBase = slugify(title || 'post')
+      let slug = slugBase || `post-${randomUUID().slice(0, 8)}`
+
+      // Quick uniqueness check; if collision, append short suffix
+      try {
+        const { data: found } = await supabaseServiceRole
+          .from('posts')
+          .select('id')
+          .eq('slug', slug)
+          .limit(1)
+        if (found && (found as any).length > 0) {
+          slug = `${slug}-${randomUUID().slice(0, 8)}`
+        }
+      } catch (e) {
+        // ignore uniqueness check errors; we'll still attempt insert
+      }
+
       const res = await supabaseServiceRole
         .from('posts')
         .insert([
           {
             title,
+            slug,
             summary,
             content,
             tags,
-      cover_url: cover || null,
-      author_id: dbUserId,
+            cover_url: cover || null,
+            author_id: dbUserId,
             published,
             published_at: published ? new Date().toISOString() : null,
           },
@@ -140,27 +170,45 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Forbidden: Blog access restricted' }, { status: 403 })
     }
 
+    // Map Clerk user -> database user UUID by matching email for read queries too.
+    const primaryEmail =
+      clerkUser.primaryEmailAddress?.emailAddress || userEmails[0] || null
+    let dbUserId: string | null = null
+    if (primaryEmail) {
+      const { data: dbUser, error: dbUserErr } = await supabaseServiceRole
+        .from('users')
+        .select('id')
+        .eq('email', primaryEmail)
+        .single()
+      if (!dbUserErr && dbUser && (dbUser as any).id) {
+        dbUserId = (dbUser as any).id
+      }
+    }
+
     // Query params: ?mode=drafts|all or ?postId=<id>
     const url = new URL(req.url)
     const postId = url.searchParams.get('postId')
     const mode = url.searchParams.get('mode') || 'all'
 
     if (postId) {
+      if (!dbUserId) return NextResponse.json({ post: null })
       const { data, error } = await supabaseServiceRole
         .from('posts')
         .select('*')
         .eq('id', postId)
-        .eq('author_id', userId)
+        .eq('author_id', dbUserId)
         .single()
 
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       return NextResponse.json({ post: data ?? null })
     }
 
+    if (!dbUserId) return NextResponse.json({ posts: [] })
+
     const query = supabaseServiceRole
       .from('posts')
       .select('*')
-      .eq('author_id', userId)
+      .eq('author_id', dbUserId)
 
     if (mode === 'drafts') {
       query.eq('published', false)
