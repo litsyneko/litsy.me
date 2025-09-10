@@ -10,13 +10,13 @@ interface Comment {
   created_at: string
 }
 
-export default function CommentList({ slug }: { slug: string }) {
+export default function CommentList({ postId }: { postId: string }) {
   const [comments, setComments] = useState<Comment[]>([])
 
   useEffect(() => {
     const fetchComments = async () => {
       try {
-        const res = await fetch(`/api/comments?post_id=${slug}`)
+        const res = await fetch(`/api/comments?post_id=${postId}`)
         if (!res.ok) throw new Error('댓글 로딩 실패')
         const data: Comment[] = await res.json()
         setComments(data)
@@ -25,7 +25,7 @@ export default function CommentList({ slug }: { slug: string }) {
       }
     }
     fetchComments()
-  }, [slug])
+  }, [postId])
 
   if (comments.length === 0) {
     return <p className="text-sm text-muted-foreground">첫 댓글을 남겨보세요.</p>

@@ -83,44 +83,55 @@ function useDescriptionTypewriter(descriptions: string[], basePauseDuration = 30
 }
 
 export default function HomeClient() {
-  const [isVisible, setIsVisible] = useState(false)
-  const [globalMousePosition, setGlobalMousePosition] = useState({ x: 0, y: 0 })
-  const heroRef = useRef<HTMLDivElement>(null)
-  const skillsRef = useRef<HTMLDivElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  const names = ["Litsy", "릿시", "リッシnEKO"]
-  const { displayText: typedName, showCursor: nameShowCursor } = useDescriptionTypewriter(names, 1500, 0, true)
+  // 통합 마우스/터치 핸들러
+  const handleInteractionMove = (e: MouseEvent | TouchEvent) => {
+    if (!cardRef.current) return;
+    const { clientX, clientY } = 'touches' in e ? e.touches[0] : e;
+    const { left, top, width, height } = cardRef.current.getBoundingClientRect();
+    const x = clientX - left - width / 2;
+    const y = clientY - top - height / 2;
+    const rotateX = (y / height) * -30;
+    const rotateY = (x / width) * 30;
+    cardRef.current.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1, 1, 1)`;
+  };
 
-  const { displayText: typedDescription, showCursor: descShowCursor } = useDescriptionTypewriter(
-    ["사용자 경험을 최우선으로 생각하는 개발자", "HaruCream", "KSNU", "Korea", "Developer", "Discord Server Manager"],
-    2500,
-    1200,
-  )
-
-  useEffect(() => {
-    setIsVisible(true)
-  }, [])
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (skillsRef.current) {
-        const rect = skillsRef.current.getBoundingClientRect()
-        setGlobalMousePosition({
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top
-        })
-      }
+  const handleInteractionEnd = () => {
+    if (cardRef.current) {
+      cardRef.current.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)';
     }
+  };
 
-    document.addEventListener('mousemove', handleMouseMove)
-    return () => document.removeEventListener('mousemove', handleMouseMove)
-  }, [skillsRef])
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    card.addEventListener('mousemove', handleInteractionMove);
+    card.addEventListener('mouseleave', handleInteractionEnd);
+    card.addEventListener('touchmove', handleInteractionMove);
+    card.addEventListener('touchend', handleInteractionEnd);
+    card.addEventListener('touchcancel', handleInteractionEnd);
+    return () => {
+      card.removeEventListener('mousemove', handleInteractionMove);
+      card.removeEventListener('mouseleave', handleInteractionEnd);
+      card.removeEventListener('touchmove', handleInteractionMove);
+      card.removeEventListener('touchend', handleInteractionEnd);
+      card.removeEventListener('touchcancel', handleInteractionEnd);
+    };
+  }, []);
 
   return (
-    // ...existing home UI code...
     <div className="min-h-screen relative overflow-hidden">
-      {/* content omitted for brevity, kept identical to previous Home page UI */}
-      {/* The original client UI lives here in full. */}
+      <div className="card-container flex items-center justify-center w-full h-full">
+        <div
+          ref={cardRef}
+          className="card relative w-[350px] h-[450px] bg-card rounded-2xl shadow-lg transition-transform duration-300 ease-out"
+          style={{ transformStyle: 'preserve-3d' }}
+        >
+          {/* 카드 내부 요소를 여기에 추가하세요 */}
+        </div>
+      </div>
     </div>
-  )
+  );
 }
+

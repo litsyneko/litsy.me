@@ -1,5 +1,8 @@
 import { getTagColor } from '@/lib/utils/blog'
 import { BlogPostWithAuthor } from '@/lib/services/blog' // BlogPostWithAuthor 타입 가져오기
+import Link from 'next/link'
+import { AspectRatio } from '@/components/ui/aspect-ratio'
+import Image from 'next/image'
 
 interface BlogCardProps {
   post: BlogPostWithAuthor // post 타입을 BlogPostWithAuthor로 변경
@@ -11,9 +14,20 @@ export default function BlogCard({ post }: BlogCardProps) {
   const displayDate = new Date(post.published_at || post.created_at || '').toLocaleDateString('ko-KR')
 
   return (
-    <a href={`/blog/${post.slug}`} className="block group rounded-lg border bg-card hover:shadow-lg transition-all overflow-hidden min-h-[44px]">
-      <div className="h-36 sm:h-44 w-full bg-muted overflow-hidden">
-        <img src={post.cover_url || '/placeholder.jpg'} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+    <Link href={`/blog/${post.slug}`} className="block group rounded-lg border bg-card hover:shadow-lg transition-all overflow-hidden min-h-[44px]">
+      <div className="w-full bg-muted overflow-hidden">
+        <AspectRatio ratio={16 / 9}>
+          <div className="relative w-full h-full">
+            <Image
+              src={post.cover_url || '/placeholder.jpg'}
+              alt={post.title}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              priority={false}
+            />
+          </div>
+        </AspectRatio>
       </div>
       <div className="p-3 sm:p-4">
         <h2 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2 line-clamp-2 leading-tight">{post.title}</h2>
@@ -53,6 +67,6 @@ export default function BlogCard({ post }: BlogCardProps) {
           <div className="text-xs text-muted-foreground flex-shrink-0">{displayDate}</div>
         </div>
       </div>
-    </a>
+    </Link>
   )
 }

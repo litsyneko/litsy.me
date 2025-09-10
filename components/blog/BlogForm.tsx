@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { Tag, Loader2, AlertCircle, CheckCircle, Save, Eye, EyeOff } from 'lucide-react'
+import { Tag, Loader2, AlertCircle, CheckCircle, Save, Eye, EyeOff, History, Trash2, Undo2 } from 'lucide-react'
 import ImageUploader from './ImageUploader'
 import MarkdownEditor from './MarkdownEditor'
+import { loadDraftVersions, restoreDraftVersion, deleteDraftVersion } from '@/lib/utils/draft'
 
 export interface BlogFormData {
   title: string
@@ -46,6 +47,8 @@ export default function BlogForm({
   const [showPreview, setShowPreview] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [isDirty, setIsDirty] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [draftVersions, setDraftVersions] = useState<import('@/lib/utils/draft').DraftData[]>([])
 
   // 폼 변경 감지
   useEffect(() => {
@@ -59,10 +62,9 @@ export default function BlogForm({
     setIsDirty(hasChanges)
   }, [title, summary, content, cover, tags, initialData])
 
-  // 자동 저장 (5초마다)
+  // 변경 시마다(300ms 디바운스) 자동 저장
   useEffect(() => {
     if (!isDirty) return
-
     const timer = setTimeout(() => {
       if (title.trim() || content.trim()) {
         const formData: BlogFormData = {
@@ -75,10 +77,36 @@ export default function BlogForm({
         onSaveDraft(formData)
         setLastSaved(new Date())
       }
-    }, 5000)
-
+    }, 300)
     return () => clearTimeout(timer)
   }, [title, summary, content, tags, cover, isDirty, onSaveDraft])
+
+  // 버전 히스토리 불러오기
+  useEffect(() => {
+    if (showHistory) {
+      setDraftVersions(loadDraftVersions())
+    }
+  }, [showHistory])
+
+  // 버전 복원
+  const handleRestoreVersion = (idx: number) => {
+    const restored = restoreDraftVersion(idx)
+    if (restored) {
+      setTitle(restored.title)
+      setSummary(restored.summary)
+      setContent(restored.content)
+      setTags(restored.tags)
+      setCover(restored.cover)
+      setShowHistory(false)
+      setLastSaved(new Date(restored.lastSaved))
+    }
+  }
+
+  // 버전 삭제
+  const handleDeleteVersion = (idx: number) => {
+    deleteDraftVersion(idx)
+    setDraftVersions(loadDraftVersions())
+  }
 
   // 폼 검증
   const validateForm = (): boolean => {
@@ -159,7 +187,7 @@ export default function BlogForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* 상태 표시 */}
+      {/* 상태 표시 및 버전 히스토리 */}
       <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
         <div className="flex items-center gap-2 text-sm">
           {isDirty ? (
@@ -174,14 +202,74 @@ export default function BlogForm({
             </>
           )}
         </div>
-        
-        {lastSaved && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Save className="w-3 h-3" />
-            <span>마지막 저장: {lastSaved.toLocaleTimeString('ko-KR')}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {lastSaved && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Save className="w-3 h-3" />
+              <span>마지막 저장: {lastSaved.toLocaleTimeString('ko-KR')}</span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowHistory(true)}
+            className="flex items-center gap-1 px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs text-muted-foreground border border-border"
+            title="버전 히스토리"
+          >
+            <History className="w-4 h-4" />
+            히스토리
+          </button>
+        </div>
       </div>
+
+      {/* 버전 히스토리 모달 */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+          <div className="bg-card rounded-lg shadow-lg p-6 w-full max-w-md max-h-[80vh] overflow-y-auto relative">
+            <button
+              className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+              onClick={() => setShowHistory(false)}
+              title="닫기"
+            >
+              ×
+            </button>
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <History className="w-5 h-5" /> 버전 히스토리
+            </h3>
+            {draftVersions.length === 0 ? (
+              <p className="text-muted-foreground py-8 text-center">저장된 버전이 없습니다.</p>
+            ) : (
+              <ul className="space-y-2">
+                {draftVersions.map((v, idx) => (
+                  <li key={idx} className="flex flex-col border rounded p-2 bg-muted/50">
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-sm truncate max-w-[70%]">{v.title || <span className="italic text-muted-foreground">(제목 없음)</span>}</div>
+                      <div className="text-xs text-muted-foreground">{new Date(v.lastSaved).toLocaleString('ko-KR')}</div>
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/80 text-xs"
+                        onClick={() => handleRestoreVersion(idx)}
+                        title="이 버전으로 복원"
+                      >
+                        <Undo2 className="w-4 h-4" /> 복원
+                      </button>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 px-2 py-1 rounded bg-destructive text-destructive-foreground hover:bg-destructive/80 text-xs"
+                        onClick={() => handleDeleteVersion(idx)}
+                        title="이 버전 삭제"
+                      >
+                        <Trash2 className="w-4 h-4" /> 삭제
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 제목 */}
       <div>

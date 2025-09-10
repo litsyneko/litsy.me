@@ -21,17 +21,17 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
 
     if (error || !post) {
       return {
-        title: 'Post Not Found | Litsy Portfolio',
-        description: 'The requested blog post could not be found.',
+        title: '포스트를 찾을 수 없습니다 | 릿시네코',
+        description: '요청하신 블로그 포스트를 찾을 수 없습니다.',
       }
     }
 
     const normalizedPost = normalizePost(post)
     const description = normalizedPost.summary || 
-      `Read "${normalizedPost.title}" by ${normalizedPost.author} on Litsy's blog.`
+      `"${normalizedPost.title}" - ${normalizedPost.author}의 포스트`
 
     return {
-      title: `${normalizedPost.title} | Litsy Portfolio`,
+      title: `${normalizedPost.title} | 릿시네코`,
       description,
       keywords: normalizedPost.tags || [],
       authors: [{ name: normalizedPost.author }],
@@ -43,13 +43,13 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
         publishedTime: normalizedPost.date,
         authors: [normalizedPost.author],
         tags: normalizedPost.tags,
-        images: normalizedPost.cover ? [normalizedPost.cover] : undefined,
+        images: normalizedPost.cover ? [normalizedPost.cover] : ['/siteimage.png'],
       },
       twitter: {
         card: 'summary_large_image',
         title: normalizedPost.title,
         description,
-        images: normalizedPost.cover ? [normalizedPost.cover] : undefined,
+        images: normalizedPost.cover ? [normalizedPost.cover] : ['/siteimage.png'],
       },
       alternates: {
         canonical: `/blog/${slug}`,
@@ -58,8 +58,8 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
   } catch (error) {
     console.error('Error generating metadata:', error)
     return {
-      title: 'Post Not Found | Litsy Portfolio',
-      description: 'The requested blog post could not be found.',
+      title: '포스트를 찾을 수 없습니다 | 릿시네코',
+      description: '요청하신 블로그 포스트를 찾을 수 없습니다.',
     }
   }
 }

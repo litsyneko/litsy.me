@@ -1,11 +1,11 @@
 "use client"
 
 import { useMemo, useState, useEffect, useCallback } from 'react'
-import { Search, X, Loader2, AlertCircle, Plus, Lock } from 'lucide-react'
+import { Search, X, AlertCircle, Plus, Lock } from 'lucide-react'
 import Link from 'next/link'
 import BlogList from './BlogList'
-import { NormalizedPost } from '@/lib/types/blog'
-import { normalizePost, getTagColor } from '@/lib/utils/blog'
+import { getTagColor } from '@/lib/utils/blog'
+import { Skeleton } from '@/components/ui/skeleton'
 // import { checkBlogWritePermission, hasWritePermission, type BlogAuthUser } from '@/lib/utils/blog-auth' // 제거
 import { BlogPostWithAuthor } from '@/lib/services/blog' // BlogPostWithAuthor 타입 가져오기
 import type { UserProfile } from '@/lib/supabase' // UserProfile 타입 가져오기
@@ -22,7 +22,7 @@ const DEFAULT_POSTS: BlogPostWithAuthor[] = [
     slug: 'nextjs-blog-tutorial',
     title: 'Next.js 블로그 튜토리얼',
     summary: 'Next.js로 블로그를 만드는 방법을 단계별로 설명합니다.',
-    date: '2025-09-01T00:00:00Z',
+    // date: '2025-09-01T00:00:00Z', // BlogPostWithAuthor 스키마에 없음
     tags: ['Next.js', 'React', '블로그'],
     author_id: 'anonymous-author-id', // 임시 ID
     author_username: 'Litsy',
@@ -40,7 +40,7 @@ const DEFAULT_POSTS: BlogPostWithAuthor[] = [
     slug: 'supabase-auth-guide',
     title: 'Supabase 인증 완벽 가이드',
     summary: 'Supabase로 소셜 로그인과 이메일 인증을 구현하는 방법을 알아봅시다.',
-    date: '2025-08-20T00:00:00Z',
+    // date: '2025-08-20T00:00:00Z', // BlogPostWithAuthor 스키마에 없음
     tags: ['Supabase', '인증', '보안'],
     author_id: 'anonymous-author-id-2', // 임시 ID
     author_username: 'Litsy',
@@ -83,6 +83,7 @@ function useFiltered(posts: BlogPostWithAuthor[], query: string, tag: string) { 
 
 export default function BlogHome({ initialPosts }: BlogHomeProps) {
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [tag, setTag] = useState('')
   const [page, setPage] = useState(1)
   const [posts, setPosts] = useState<BlogPostWithAuthor[]>(initialPosts || DEFAULT_POSTS) // NormalizedPost -> BlogPostWithAuthor
@@ -92,6 +93,12 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
   const [authLoading, setAuthLoading] = useState(true)
 
   const perPage = 6
+
+  // 검색 입력 디바운스
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 300)
+    return () => clearTimeout(t)
+  }, [query])
 
   // 사용자 권한 확인 및 포스트 불러오기
   const fetchAuthAndPosts = useCallback(async () => {
@@ -140,7 +147,7 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
     fetchAuthAndPosts()
   }, [fetchAuthAndPosts])
 
-  const filtered = useFiltered(posts, query, tag)
+  const filtered = useFiltered(posts, debouncedQuery, tag)
   const total = filtered.length
   const pages = Math.max(1, Math.ceil(total / perPage))
 
@@ -176,12 +183,37 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto py-12 px-4">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-muted-foreground">블로그 포스트를 불러오는 중...</p>
+      <div className="max-w-5xl mx-auto py-6 sm:py-12 px-4">
+        <header className="mb-6 sm:mb-10">
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-3xl sm:text-4xl font-extrabold">블로그</h1>
           </div>
+          <p className="text-muted-foreground text-sm sm:text-base">콘텐츠를 불러오는 중...</p>
+        </header>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-lg border bg-card overflow-hidden">
+              <div className="w-full">
+                <Skeleton className="h-40 sm:h-44 w-full" />
+              </div>
+              <div className="p-3 sm:p-4 space-y-3">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-3 w-12" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     )
@@ -191,7 +223,7 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
     <div className="max-w-5xl mx-auto py-6 sm:py-12 px-4">
       <header className="mb-6 sm:mb-10">
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-3xl sm:text-4xl font-extrabold">Blog</h1>
+          <h1 className="text-3xl sm:text-4xl font-extrabold">블로그</h1>
 
           {/* 글쓰기 버튼 */}
           {!authLoading && (
@@ -221,7 +253,7 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
         </div>
 
         <p className="text-muted-foreground text-sm sm:text-base">
-          기술과 생각을 공유합니다.
+          개발과 일상에 대한 기록을 담았습니다. 관심 있는 주제를 태그로 탐색해보세요.
         </p>
 
         {/* 권한 정보 표시 */}
@@ -308,7 +340,7 @@ export default function BlogHome({ initialPosts }: BlogHomeProps) {
                 type="text"
                 value={query}
                 onChange={(e) => handleSearch(e.target.value)}
-                placeholder="제목, 내용, 태그로 검색..."
+                placeholder="제목·요약·태그 검색"
                 className="w-full pl-10 pr-10 py-3 sm:py-2.5 text-base sm:text-sm rounded-md bg-card border min-h-[44px] sm:min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               {query && (

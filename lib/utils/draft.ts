@@ -1,6 +1,8 @@
 import type { BlogFormData } from '@/components/blog/BlogForm'
 
 const DRAFT_KEY = 'blog-draft'
+const DRAFT_VERSIONS_KEY = 'blog-draft-versions'
+const MAX_DRAFT_VERSIONS = 10;
 
 export interface DraftData extends BlogFormData {
   lastSaved: string
@@ -22,9 +24,61 @@ export function saveDraft(data: Partial<DraftData> | BlogFormData): void {
       postId: (data as any).postId || null,
     }
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draftData))
+    // --- 버전 히스토리도 함께 저장 ---
+    try {
+      const raw = localStorage.getItem(DRAFT_VERSIONS_KEY)
+      const versions: DraftData[] = raw ? JSON.parse(raw) : []
+      // 동일 내용 중복 저장 방지
+      if (!versions.length || JSON.stringify(versions[0]) !== JSON.stringify(draftData)) {
+        versions.unshift(draftData)
+        if (versions.length > MAX_DRAFT_VERSIONS) versions.length = MAX_DRAFT_VERSIONS
+        localStorage.setItem(DRAFT_VERSIONS_KEY, JSON.stringify(versions))
+      }
+    } catch (err) {
+      // ignore version save error
+    }
   } catch (error) {
     console.error('Error saving draft:', error)
   }
+}
+
+/**
+ * 드래프트 버전 히스토리 전체 불러오기 (최신순)
+ */
+export function loadDraftVersions(): DraftData[] {
+  try {
+    const raw = localStorage.getItem(DRAFT_VERSIONS_KEY)
+    if (!raw) return []
+    return JSON.parse(raw) as DraftData[]
+  } catch {
+    return []
+  }
+}
+
+/**
+ * 특정 시점의 드래프트로 복원
+ */
+export function restoreDraftVersion(index: number): DraftData | null {
+  try {
+    const versions = loadDraftVersions()
+    if (!versions.length || !versions[index]) return null
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(versions[index]))
+    return versions[index]
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 버전 히스토리에서 특정 버전 삭제
+ */
+export function deleteDraftVersion(index: number): void {
+  try {
+    const versions = loadDraftVersions()
+    if (index < 0 || index >= versions.length) return
+    versions.splice(index, 1)
+    localStorage.setItem(DRAFT_VERSIONS_KEY, JSON.stringify(versions))
+  } catch {}
 }
 
 /**

@@ -1,6 +1,21 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+/* 3D 카드 컨테이너 기본 스타일 */
+.card-container {
+  perspective: 1000px;
+}
+
+@media (max-width: 768px) {
+  .card-container {
+    perspective: 1500px;
+  }
+  .card {
+    width: 300px !important;
+    height: 400px !important;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
