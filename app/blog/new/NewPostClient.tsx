@@ -44,6 +44,7 @@ export default function NewPostClient() {
     setUrlPostId(postId)
   }, [isLoaded, searchParams])
 
+    useEffect(() => {
     const run = async () => {
       setLoadingState(true)
       setForbidden(false)

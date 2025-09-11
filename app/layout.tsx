@@ -4,7 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import Navigation from "@/components/navigation";
 import { Toaster } from "sonner";
-
+import { SpeedInsights } from "@vercel/speed-insights/next"
 // Using a standard Google Fonts <link> instead of next/font to avoid Next 15 API
 // mismatches in this project environment.
 

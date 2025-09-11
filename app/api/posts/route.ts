@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { BlogService } from '@/lib/services/blog'
 import { auth, clerkClient } from '@clerk/nextjs/server'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@/lib/supabase-server'
 
 // 블로그 작성 권한이 있는 Discord 사용자 목록 (또는 users.role 활용)
 const AUTHORIZED_DISCORD_USERS = [
@@ -10,13 +12,14 @@ const AUTHORIZED_DISCORD_USERS = [
 
 // 권한 확인 헬퍼 함수
 async function checkBlogWritePermission(): Promise<{ hasPermission: boolean; user: any | null; error: string | null }> { // Changed UserProfile to any for now
-  const { userId } = auth();
+  const { userId } = await auth();
   
   if (!userId) {
     return { hasPermission: false, user: null, error: 'Unauthorized' }
   }
 
-  const clerkUser = await clerkClient.users.getUser(userId);
+  const clerk = await clerkClient()
+  const clerkUser = await clerk.users.getUser(userId);
   
   if (!clerkUser) {
     return { hasPermission: false, user: null, error: 'User profile not found' }
@@ -57,7 +60,7 @@ export async function GET(request: Request) {
     const tag = searchParams.get('tag')
     const authorId = searchParams.get('authorId') // authorId 추가
 
-    const supabase = createSupabaseServerClient()
+    const supabase = createServerClient(cookies())
     const blogService = new BlogService(supabase)
     
     const options: any = {}
@@ -163,7 +166,7 @@ export async function POST(request: Request) {
     }
 
     // BlogService를 사용하여 포스트 생성
-    const supabase = createSupabaseServerClient()
+    const supabase = createServerClient(cookies())
     const blogService = new BlogService(supabase)
     const postData = {
       title: title.trim(),
@@ -171,6 +174,7 @@ export async function POST(request: Request) {
       content: content.trim(),
       tags: Array.isArray(tags) ? tags.filter(tag => tag && tag.trim()) : [],
       cover: cover || '',
+      author: user?.id || '',
       // author 필드는 DB에서 필요 없음, author_id로 대체
       user_id: user?.id || '' // user_id -> author_id (BlogService 내부에서 매핑)
     }
