@@ -18,7 +18,9 @@ interface BlogFormProps {
   initialData?: Partial<BlogFormData>
   onSubmit: (data: BlogFormData) => Promise<void>
   onCancel: () => void
-  onSaveDraft: (data: BlogFormData) => void
+  onAutoSave?: (data: BlogFormData) => void;
+  onManualSave?: (data: BlogFormData) => Promise<void>;
+  onFormChange?: (data: BlogFormData, isDirty: boolean) => void
   isSubmitting?: boolean
   submitLabel?: string
 }
@@ -33,7 +35,9 @@ export default function BlogForm({
   initialData = {},
   onSubmit,
   onCancel,
-  onSaveDraft,
+  onAutoSave,
+  onManualSave,
+  onFormChange,
   isSubmitting = false,
   submitLabel = '발행하기'
 }: BlogFormProps) {
@@ -59,12 +63,24 @@ export default function BlogForm({
       cover !== (initialData.cover || '') ||
       JSON.stringify(tags) !== JSON.stringify(initialData.tags || [])
     
-    setIsDirty(hasChanges)
-  }, [title, summary, content, cover, tags, initialData])
+    if (hasChanges && !isDirty) setIsDirty(true);
+    if (!hasChanges && isDirty) setIsDirty(false);
+    
+    // 폼 변경사항이 있으면 부모 컴포넌트에 알림
+    if (onFormChange) {
+      onFormChange({
+        title,
+        summary,
+        content,
+        tags,
+        cover,
+      }, isDirty);
+    }
+  }, [title, summary, content, cover, tags, initialData, isDirty, onFormChange])
 
   // 변경 시마다(300ms 디바운스) 자동 저장
   useEffect(() => {
-    if (!isDirty) return
+    if (!isDirty) return;
     const timer = setTimeout(() => {
       if (title.trim() || content.trim()) {
         const formData: BlogFormData = {
@@ -72,14 +88,17 @@ export default function BlogForm({
           summary: summary.trim(),
           content: content.trim(),
           tags,
-          cover
+          cover,
+        };
+        if (onAutoSave) {
+          onAutoSave(formData);
         }
-        onSaveDraft(formData)
-        setLastSaved(new Date())
+        setLastSaved(new Date());
+        setIsDirty(false); // 저장 후 dirty 해제
       }
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [title, summary, content, tags, cover, isDirty, onSaveDraft])
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [title, summary, content, tags, cover, isDirty, onAutoSave]);
 
   // 버전 히스토리 불러오기
   useEffect(() => {
@@ -106,6 +125,16 @@ export default function BlogForm({
   const handleDeleteVersion = (idx: number) => {
     deleteDraftVersion(idx)
     setDraftVersions(loadDraftVersions())
+  }
+
+  // 폼 유효성 검사
+  const isFormValid = (): boolean => {
+    const newErrors: FormErrors = {}
+    if (!title.trim()) newErrors.title = '제목을 입력해주세요.'
+    if (!content.trim()) newErrors.content = '내용을 입력해주세요.'
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
   }
 
   // 폼 검증
@@ -152,7 +181,7 @@ export default function BlogForm({
     await onSubmit(formData)
   }
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     const formData: BlogFormData = {
       title: title.trim(),
       summary: summary.trim(),
@@ -160,7 +189,9 @@ export default function BlogForm({
       tags,
       cover
     }
-    onSaveDraft(formData)
+    if (onManualSave) {
+      await onManualSave(formData)
+    }
     setLastSaved(new Date())
   }
 
@@ -182,8 +213,6 @@ export default function BlogForm({
       addTag()
     }
   }
-
-  const isFormValid = title.trim() && content.trim() && Object.keys(errors).length === 0
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -280,9 +309,7 @@ export default function BlogForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="블로그 포스트 제목을 입력하세요"
-          className={`w-full p-3 rounded-lg border bg-card focus:outline-none focus:ring-2 focus:ring-primary/20 ${
-            errors.title ? 'border-red-500' : ''
-          }`}
+          className={`w-full p-3 rounded-lg border bg-card focus:outline-none focus:ring-2 focus:ring-primary/20 ${errors.title ? 'border-red-500' : ''}`}
           required
         />
         {errors.title && (
@@ -304,9 +331,7 @@ export default function BlogForm({
           onChange={(e) => setSummary(e.target.value)} 
           rows={3}
           placeholder="포스트의 간단한 요약을 작성하세요..."
-          className={`w-full p-3 rounded-lg border bg-card resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 ${
-            errors.summary ? 'border-red-500' : ''
-          }`}
+          className={`w-full p-3 rounded-lg border bg-card resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 ${errors.summary ? 'border-red-500' : ''}`}
         />
         {errors.summary && (
           <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
@@ -399,7 +424,7 @@ export default function BlogForm({
           <div 
             className="min-h-[400px] p-4 border rounded-lg bg-card prose prose-lg max-w-none"
             dangerouslySetInnerHTML={{ 
-              __html: content ? content.replace(/\n/g, '<br>') : '<p class="text-muted-foreground">미리보기할 내용이 없습니다.</p>' 
+              __html: content ? content.replace(/\n/g, '<br>') : '<p class="text-muted-foreground">미리보기할 내용이 없습니다.</p>'
             }}
           />
         ) : (
@@ -429,31 +454,78 @@ export default function BlogForm({
 
       {/* 액션 버튼들 */}
       <div className="flex justify-between items-center pt-6 border-t">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-6 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
-        >
-          취소
-        </button>
-        
-        <div className="flex gap-3">
+        <div className="flex space-x-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-6 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
+          >
+            취소
+          </button>
           <button
             type="button"
             onClick={handleSaveDraft}
-            className="px-4 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors flex items-center gap-2"
+            disabled={!isDirty || isSubmitting}
+            className="px-6 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
-            <Save className="w-4 h-4" />
-            임시 저장
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>저장 중...</span>
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                <span>임시 저장</span>
+              </>
+            )}
           </button>
-          
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          {lastSaved && (
+            <div className="text-sm text-muted-foreground">
+              마지막 저장: {new Date(lastSaved).toLocaleString()}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowPreview(!showPreview)}
+            className="flex items-center space-x-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showPreview ? (
+              <>
+                <EyeOff className="h-4 w-4" />
+                <span>미리보기 닫기</span>
+              </>
+            ) : (
+              <>
+                <Eye className="h-4 w-4" />
+                <span>미리보기</span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowHistory(!showHistory)}
+            className="flex items-center space-x-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <History className="h-4 w-4" />
+            <span>버전 기록</span>
+          </button>
           <button
             type="submit"
-            disabled={isSubmitting || !isFormValid}
-            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            disabled={isSubmitting || !isFormValid()}
+            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
-            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isSubmitting ? '발행 중...' : submitLabel}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>처리 중...</span>
+              </>
+            ) : (
+              <span>{submitLabel}</span>
+            )}
           </button>
         </div>
       </div>

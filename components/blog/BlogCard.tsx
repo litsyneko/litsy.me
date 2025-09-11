@@ -14,7 +14,7 @@ export default function BlogCard({ post }: BlogCardProps) {
   const displayDate = new Date(post.published_at || post.created_at || '').toLocaleDateString('ko-KR')
 
   return (
-    <Link href={`/blog/${post.slug}`} className="block group rounded-lg border bg-card hover:shadow-lg transition-all overflow-hidden min-h-[44px]">
+    <Link href={`/blog/${post.slug}`} className="block group rounded-lg border bg-card hover:shadow-lg transition-all overflow-hidden min-h-[44px] break-inside-avoid">
       <div className="w-full bg-muted overflow-hidden">
         <AspectRatio ratio={16 / 9}>
           <div className="relative w-full h-full">

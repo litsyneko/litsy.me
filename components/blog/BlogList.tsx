@@ -11,7 +11,7 @@ export default function BlogList({ posts }: { posts: BlogPostWithAuthor[] }) { /
 
   return (
     <div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+      <div className="[column-count:1] sm:[column-count:2] lg:[column-count:3] gap-4 sm:gap-6 lg:gap-8 space-y-4 sm:space-y-6 lg:space-y-8">
         {posts.map((post: BlogPostWithAuthor) => { // post 타입을 BlogPostWithAuthor로 변경
           // const post = normalize(raw) // normalize 함수 호출 제거
           return <BlogCard key={post.slug} post={post} />

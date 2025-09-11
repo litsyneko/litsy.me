@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { Clock, Eye, Share2, Calendar, User } from 'lucide-react'
 import HeartButton from './HeartButton'
 import CommentsWrapper from './CommentsWrapper'
+import CommentList from './CommentList'
+import CommentForm from './CommentForm'
 
 import { markdownToHtml, calculateReadingTime, getTagColor } from '@/lib/utils/blog'
 
