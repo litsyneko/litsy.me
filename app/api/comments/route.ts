@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { getDiscordUsername } from '@/lib/discord'
 import { auth, clerkClient } from '@clerk/nextjs/server'
+
+function sanitizeDiscordUsername(input: string): string {
+  const m = input.match(/^([^#]+)#\d{4}$/);
+  if (m) return m[1].trim();
+  const t = input.trim();
+  return t.length > 0 ? t : 'Anonymous';
+}
 
 export async function GET(request: Request) {
   try {
@@ -33,7 +39,7 @@ export async function GET(request: Request) {
     const normalized = (data || []).map((row: any) => {
       const rawName = row.author_name || 'Anonymous'
       // sanitize name: strip discord discriminator and avoid email
-      let authorName = typeof rawName === 'string' ? getDiscordUsername(rawName) || rawName : rawName
+      let authorName = typeof rawName === 'string' ? sanitizeDiscordUsername(rawName) || rawName : rawName
       if (typeof authorName === 'string' && authorName.includes('@') && authorName.includes('.')) authorName = 'Anonymous'
 
       return {
@@ -137,7 +143,7 @@ export async function POST(request: Request) {
 
     // sanitize name using centralized helper
     if (typeof result.author_name === 'string') {
-      const maybe = getDiscordUsername(result.author_name) || result.author_name
+      const maybe = sanitizeDiscordUsername(result.author_name) || result.author_name
       result.author_name = (typeof maybe === 'string' && maybe.includes('@') && maybe.includes('.')) ? 'Anonymous' : maybe
     }
 
