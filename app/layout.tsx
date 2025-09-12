@@ -1,45 +1,38 @@
-import type { Metadata } from 'next'
-import ClerkProviderClient from '@/components/ClerkProviderClient'
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
-import Navigation from "@/components/navigation";
-import { Toaster } from "sonner";
-import { SpeedInsights } from "@vercel/speed-insights/next"
-import { siteMetadata } from '@/lib/siteMetadata';
 
-// Using a standard Google Fonts <link> instead of next/font to avoid Next 15 API
-// mismatches in this project environment.
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
 
-export const metadata: Metadata = siteMetadata;
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "릿시네코 - 웹사이트",
+  description: "릿시네코의 웹사이트입니다. 포트폴리오겸 블로그 입니다.",
+  icons: {
+    icon: "/favicon.ico",
+  },
+  keywords: ["릿시", "릿시네코", "네코", "개발자", "디스코드 봇", "유튜버", "버튜버"]
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
-  // RootLayout must render <html> and <body> at the top level (server component).
-  // Place client-only ClerkProvider inside <body> so Next can detect root tags.
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="ko" suppressHydrationWarning>
-      <head>
-        <meta name="naver-site-verification" content="46a4cc0ec327f438b21ecdce34934a76db0fe86f" />
-      </head>
-      <body>
-        <ClerkProviderClient>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <Navigation />
-            <main>
-              {children}
-            </main>
-            <Toaster />
-          </ThemeProvider>
-        </ClerkProviderClient>
+    <html lang="ko">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        {children}
       </body>
     </html>
-  )
+  );
 }
