@@ -43,13 +43,13 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
         publishedTime: normalizedPost.date,
         authors: [normalizedPost.author],
         tags: normalizedPost.tags,
-        images: normalizedPost.cover ? [normalizedPost.cover] : ['/siteimage.png'],
+        images: normalizedPost.cover ? [normalizedPost.cover] : [`${process.env.NEXT_PUBLIC_SITE_URL || 'https://litsy.me'}/siteimage.png`],
       },
       twitter: {
         card: 'summary_large_image',
         title: normalizedPost.title,
         description,
-        images: normalizedPost.cover ? [normalizedPost.cover] : ['/siteimage.png'],
+        images: normalizedPost.cover ? [normalizedPost.cover] : [`${process.env.NEXT_PUBLIC_SITE_URL || 'https://litsy.me'}/siteimage.png`],
       },
       alternates: {
         canonical: `/blog/${slug}`,

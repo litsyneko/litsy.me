@@ -4,36 +4,9 @@ import BlogHome from '@/components/blog/BlogHome'
 import { BlogService } from '@/lib/services/blog'
 import { BlogPostWithAuthor } from '@/lib/services/blog'
 
-export const metadata: Metadata = {
-  title: '블로그 | 릿시네코',
-  description: '기술과 생각을 공유하는 블로그입니다. Next.js, React, Supabase 등 개발 관련 글을 한국어로 제공합니다.',
-  keywords: ['Litsy', '릿시', '릿시네코', '블로그', '개발', 'Next.js', 'React', 'Supabase'],
-  authors: [{ name: 'LitsyNeko' }],
-  openGraph: {
-    title: '블로그 | 릿시네코',
-    description: '기술과 생각을 공유하는 블로그입니다.',
-    type: 'website',
-    locale: 'ko_KR',
-    url: '/blog',
-    images: [
-      {
-        url: '/siteimage.png',
-        width: 1200,
-        height: 630,
-        alt: '릿시네코 블로그 미리보기',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: '블로그 | 릿시네코',
-    description: '기술과 생각을 공유하는 블로그입니다.',
-    images: ['/siteimage.png'],
-  },
-  alternates: {
-    canonical: '/blog',
-  },
-}
+import siteMetadata from '@/lib/siteMetadata'
+
+export const metadata = siteMetadata
 
 export default async function BlogPage() {
   const supabase = createServerClient({ cookieStore: {} })

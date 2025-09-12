@@ -1,7 +1,8 @@
 import { StaticPageConfig, DynamicContentConfig } from './types'
 
 export const SITEMAP_CONFIG = {
-  baseUrl: process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  // Prefer environment-provided site URL; fall back to the production domain if available.
+  baseUrl: process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://litsy.me',
   maxUrls: 50000, // XML Sitemap 표준 제한
   staticPages: [
     { path: '/', changeFrequency: 'weekly', priority: 1.0 },
