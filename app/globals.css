@@ -45,6 +45,8 @@
 
 :root {
   --radius: 0.625rem;
+  /* Discord embed brand color (default) */
+  --discord-embed: #8c9fff;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -119,4 +121,147 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Ensure full-height layout so flex children can fill viewport */
+html, body, #__next {
+  height: 100%;
+}
+
+/* Utility to allow a section to go full-bleed (use on page sections) */
+.full-bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
+/* Glassmorphism helpers */
+.glass-gradient {
+  background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+}
+
+.glass-border {
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.page-bg {
+  background-image: radial-gradient(800px 400px at 10% 10%, rgba(99,102,241,0.08), transparent 20%), radial-gradient(600px 300px at 90% 90%, rgba(236,72,153,0.06), transparent 20%);
+}
+
+/* Personal theme palette for About page */
+.theme-personal {
+  --primary: #8c9fff;   /* periwinkle */
+  --secondary: #87b5ff; /* light blue */
+  --accent: #f2feff;    /* soft icy white */
+  --discord-embed: #8c9fff; /* discord embed color */
+}
+
+/* 3D avatar helpers */
+.avatar-3d {
+  perspective: 1000px;
+}
+.avatar-tilt {
+  transform-style: preserve-3d;
+  transition: transform 300ms ease;
+}
+.avatar-3d:hover .avatar-tilt {
+  transform: rotateX(10deg) rotateY(-8deg);
+}
+
+/* Glass + glow utilities used on Home */
+.glass-effect {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(10px);
+}
+.hover-glow:hover {
+  box-shadow: 0 10px 30px rgba(140,159,255,0.25);
+}
+.hover-lift { transition: transform 300ms ease; }
+.hover-lift:hover { transform: translateY(-4px); }
+.gradient-text {
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.btn-modern {
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  color: white;
+}
+
+/* Animations */
+@keyframes morphing-blob {
+  0%   { transform: translate(0,0) scale(1); border-radius: 30% 70% 60% 40%/30% 30% 70% 70%; }
+  50%  { transform: translate(10px,-10px) scale(1.05); border-radius: 40% 60% 70% 30%/40% 40% 60% 60%; }
+  100% { transform: translate(-5px,5px) scale(0.98); border-radius: 60% 40% 30% 70%/60% 60% 40% 40%; }
+}
+.animate-morphing-blob { animation: morphing-blob 12s ease-in-out infinite; }
+
+@keyframes pulseGlow {
+  0%,100% { opacity: .6; }
+  50% { opacity: .9; }
+}
+.animate-pulse-glow { animation: pulseGlow 4s ease-in-out infinite; }
+
+@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.animate-float { animation: floaty 6s ease-in-out infinite; }
+
+/* Moved from styled-jsx in app/layout.tsx */
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #8b5cf6, #ec4899);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #7c3aed, #db2777);
+}
+
+/* Smooth global color transitions (can be disabled during theme change) */
+* {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+/* Disable heavy transitions momentarily while theme toggles */
+html.theme-changing *, body.theme-changing * {
+  transition: none !important;
+}
+
+/* Reduce animations on small screens for performance */
+@media (max-width: 768px) {
+  .mobile-no-anim { animation: none !important; }
+  .mobile-low-blur { filter: none !important; backdrop-filter: none !important; }
 }
