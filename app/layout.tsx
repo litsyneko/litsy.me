@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: siteConfig.title,
     description: siteConfig.description,
-    images: [`${siteConfig.url}/siteimage.png`],
+    images: ['/siteimage.png'],
     creator: '@litsyme', // 트위터 핸들이 있다면 여기에 입력해주세요.
   },
 
