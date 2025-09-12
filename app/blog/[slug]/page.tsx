@@ -5,11 +5,11 @@ import BlogDetail from '@/components/blog/BlogDetail'
 import { normalizePost } from '@/lib/utils/blog'
 
 interface PostPageProps {
-  params: Promise<{ slug: string }>
+  params: { slug: string }
 }
 
 export async function generateMetadata({ params }: PostPageProps): Promise<Metadata> {
-  const { slug } = await params
+  const { slug } = params
   
   try {
     const { data: post, error } = await supabase
@@ -65,7 +65,7 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
 }
 
 export default async function PostPage({ params }: PostPageProps) {
-  const { slug } = await params
+  const { slug } = params
   
   try {
     const { data: post, error } = await supabase
