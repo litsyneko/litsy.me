@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { BlogService } from '@/lib/services/blog'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { cookies } from 'next/headers'
-import { createServerClient } from '@/lib/supabase-server'
+import { createServerClient } from '@/lib/supabase-server';
+import sanitizeHtml from 'sanitize-html';
 
 // 블로그 작성 권한이 있는 Discord 사용자 목록 (또는 users.role 활용)
 const AUTHORIZED_DISCORD_USERS = [
@@ -40,9 +41,9 @@ async function checkBlogWritePermission(): Promise<{ hasPermission: boolean; use
     location: (clerkUser.publicMetadata?.location as string) || null,
   };
 
+  const discordUsername = clerkUser.externalAccounts?.find(acc => acc.provider === 'discord')?.username;
   const hasPermission = user.role === 'admin' || 
-                        AUTHORIZED_DISCORD_USERS.includes(user.username || '') ||
-                        AUTHORIZED_DISCORD_USERS.includes(user.id) // Use user.id from Clerk
+                       (discordUsername && AUTHORIZED_DISCORD_USERS.includes(discordUsername));
   
   return { 
     hasPermission,
@@ -58,120 +59,14 @@ export async function GET(request: Request) {
     const limit = searchParams.get('limit')
     const offset = searchParams.get('offset')
     const tag = searchParams.get('tag')
-    const authorId = searchParams.get('authorId') // authorId 추가
+    const authorId = searchParams.get('authorId'); // authorId 추가
 
-    const supabase = createServerClient(cookies())
-    const blogService = new BlogService(supabase)
-    
-    const options: any = {}
-    if (published === 'true') {
-      options.published = true
-    }
-    if (limit) {
-      options.limit = parseInt(limit)
-    }
-    if (offset) {
-      options.offset = parseInt(offset)
-    }
-    if (authorId) { // authorId 추가
-      options.authorId = authorId
-    }
 
-    let posts
-    if (tag) {
-      posts = await blogService.getPostsByTag(tag)
-    } else {
-      posts = await blogService.getPosts(options)
-    }
-
-    return NextResponse.json(posts)
-  } catch (error) {
-    console.error('GET /api/posts error:', error)
-    return NextResponse.json(
-      { 
-        error: 'Failed to fetch posts',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }, 
-      { status: 500 }
-    )
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    // 권한 확인
-    const { hasPermission, user, error: authError } = await checkBlogWritePermission()
-    
-    if (!hasPermission) {
-      return NextResponse.json({ 
-        error: authError,
-        user: user ? { id: user.id, username: user.username, display_name: user.display_name, role: user.role } : null
-      }, { status: authError === 'Unauthorized' ? 401 : 403 })
-    }
-
-    // 요청 데이터 파싱 및 검증
-    const body = await request.json()
-    const { title, summary, content, tags, cover } = body
-    
-    // 필수 필드 검증
-    if (!title?.trim()) {
-      return NextResponse.json({ 
-        error: 'Title is required',
-        field: 'title'
-      }, { status: 400 })
-    }
-    
-    if (!content?.trim()) {
-      return NextResponse.json({ 
-        error: 'Content is required',
-        field: 'content'
-      }, { status: 400 })
-    }
-
-    // 길이 검증
-    if (title.trim().length > 100) {
-      return NextResponse.json({ 
-        error: 'Title must be 100 characters or less',
-        field: 'title'
-      }, { status: 400 })
-    }
-
-    if (summary && summary.trim().length > 200) {
-      return NextResponse.json({ 
-        error: 'Summary must be 200 characters or less',
-        field: 'summary'
-      }, { status: 400 })
-    }
-
-    if (content.trim().length < 10) {
-      return NextResponse.json({ 
-        error: 'Content must be at least 10 characters',
-        field: 'content'
-      }, { status: 400 })
-    }
-
-    // 태그 검증
-    if (tags && !Array.isArray(tags)) {
-      return NextResponse.json({ 
-        error: 'Tags must be an array',
-        field: 'tags'
-      }, { status: 400 })
-    }
-
-    if (tags && tags.length > 10) {
-      return NextResponse.json({ 
-        error: 'Maximum 10 tags allowed',
-        field: 'tags'
-      }, { status: 400 })
-    }
-
-    // BlogService를 사용하여 포스트 생성
-    const supabase = createServerClient(cookies())
     const blogService = new BlogService(supabase)
     const postData = {
       title: title.trim(),
       summary: summary?.trim() || '',
-      content: content.trim(),
+      content: cleanContent.trim(),
       tags: Array.isArray(tags) ? tags.filter(tag => tag && tag.trim()) : [],
       cover: cover || '',
       author: user?.id || '',
