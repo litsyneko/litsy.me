@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: `%s | 릿시네코`,
   },
   description: siteConfig.description,
-  keywords: ['릿시네코', '블로그', '포트폴리오', '프론트엔드', '개발자', '잡다한 블로그', '버튜버','유튜버', 'TypeScript'],
+  keywords: ['릿시네코', '블로그', '포트폴리오', '프론트엔드', '개발자', '잡다한 블로그', '버튜버','유튜버', 'TypeScript', '디스코드', '디스코드 개발자', '버츄얼'],
   authors: [{ name: 'LitsyNeko', url: siteConfig.url }],
   creator: 'LitsyNeko',
 
