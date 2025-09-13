@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/app/components/ui/button";
 import { ChevronDown, Code, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import SkillCard from "@/components/SkillCard";
+import SkillCard from "@/app/components/SkillCard";
 import { FaReact, FaNodeJs, FaDiscord } from "react-icons/fa";
 import { SiNextdotjs, SiTypescript } from "react-icons/si";
 import { MdDesignServices } from "react-icons/md";

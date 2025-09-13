@@ -1,0 +1,6 @@
+## Clerk third-party auth integration was deprecated in Supabase.
+## Removing Clerk configuration to avoid confusion.
+
+[auth.third_party.firebase]
+enabled = true
+project_id = "299178854068"
