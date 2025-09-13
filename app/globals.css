@@ -188,6 +188,44 @@ html, body, #__next {
   color: white;
 }
 
+/* Navbar sizing tweaks by aspect ratio */
+.navbar-shell { pointer-events: none; }
+.navbar-card { pointer-events: auto; }
+.navbar-brand { letter-spacing: -0.01em; }
+
+/* Default desktop scale */
+@media (min-width: 1024px) {
+  .navbar-card { border-radius: 14px; }
+}
+
+/* Width tuning for various aspect ratios */
+.navbar-wrap { max-width: 72rem; } /* ~1152px default */
+@media (min-aspect-ratio: 16/9) { .navbar-wrap { max-width: 80rem; } } /* ~1280px */
+@media (min-aspect-ratio: 21/9) { .navbar-wrap { max-width: 100rem; } } /* ~1600px */
+@media (max-aspect-ratio: 1/1) { .navbar-wrap { max-width: 64rem; } } /* ~1024px on square */
+@media (max-aspect-ratio: 9/16) { .navbar-wrap { max-width: 46rem; } } /* tall phones */
+
+/* Ultra-wide (≈21:9+) */
+@media (min-aspect-ratio: 21/9) and (min-width: 1280px) {
+  .navbar-brand { font-size: 1.3rem; }
+  .navbar-card { padding-block: 0.3rem !important; }
+}
+
+/* Standard wide (≈16:9) */
+@media (min-aspect-ratio: 16/9) and (max-aspect-ratio: 21/9) and (min-width: 1024px) {
+  .navbar-card { padding-block: 0.28rem !important; }
+}
+
+/* Square-ish (≤1:1) */
+@media (max-aspect-ratio: 1/1) and (min-width: 768px) {
+  .navbar-card { padding-block: 0.25rem !important; }
+}
+
+/* Tall mobile (≈9:16) */
+@media (max-aspect-ratio: 9/16) {
+  .navbar-card { padding-block: 0.2rem !important; }
+}
+
 /* Animations */
 @keyframes morphing-blob {
   0%   { transform: translate(0,0) scale(1); border-radius: 30% 70% 60% 40%/30% 30% 70% 70%; }
