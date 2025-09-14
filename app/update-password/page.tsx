@@ -38,13 +38,9 @@ export default function UpdatePasswordPage() {
               const params = new URLSearchParams(hash.replace("#", ""));
               const access_token = params.get("access_token");
               const refresh_token = params.get("refresh_token");
-              if (access_token) {
-                const sess = {
-                  access_token,
-                  refresh_token: refresh_token ?? "",
-                };
-                await supabase.auth.setSession(sess as any);
-              }
+                if (access_token) {
+                  await supabase.auth.setSession({ access_token, refresh_token: refresh_token ?? "" });
+                }
             }
           }
 
