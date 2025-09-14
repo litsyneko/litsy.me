@@ -34,6 +34,10 @@ export default function AccountSettingsPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [updatingPw, setUpdatingPw] = useState(false);
 
+  // timestamps from auth user
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
+  const [lastSignIn, setLastSignIn] = useState<string | null>(null);
+
   const providerLabel = useMemo(() => {
     switch (provider) {
       case "DISCORD":
@@ -57,6 +61,11 @@ export default function AccountSettingsPage() {
       setEmail(user?.email ?? "");
       const p = (user?.identities?.[0]?.provider || user?.app_metadata?.provider || "EMAIL").toUpperCase();
       setProvider(p);
+
+      // auth timestamps
+      setCreatedAt(user?.created_at ?? null);
+      setLastSignIn(user?.last_sign_in_at ?? null);
+
       if (user?.id) {
         // Auth user metadata를 우선적으로 사용 (프로필 테이블 대신)
         const displayNameFromAuth = user.user_metadata?.display_name;
@@ -124,19 +133,31 @@ export default function AccountSettingsPage() {
     const user = data.user;
     if (!user) return;
 
-    // 프로필 테이블 대신 Auth user metadata에 저장 (임시 주석 처리)
-    // const { error } = await supabase.from("profiles").upsert({ id: user.id, avatar_url: url });
+    // 1) profiles 테이블에 저장(권장)
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: user.id,
+      avatar_url: url,
+      updated_at: new Date().toISOString(),
+    });
 
-    // Auth user metadata에 avatar_url 저장
+    // 2) auth user metadata에도 저장 (optional, for convenience)
     const { error: authError } = await supabase.auth.updateUser({
       data: { avatar_url: url }
     });
 
-    if (!authError) {
+    if (!profileError && !authError) {
       setAvatarUrl(url);
       setMessage("아바타가 업데이트되었습니다.");
+      // refresh timestamps from auth (no harm)
+      try {
+        const { data: refreshed } = await supabase.auth.getUser();
+        setCreatedAt(refreshed.user?.created_at ?? createdAt);
+        setLastSignIn(refreshed.user?.last_sign_in_at ?? lastSignIn);
+      } catch {
+        // ignore
+      }
     } else {
-      setMessage(`Auth 오류: ${authError.message}`);
+      setMessage(`오류: ${profileError?.message || authError?.message}`);
     }
   };
 
@@ -199,6 +220,10 @@ export default function AccountSettingsPage() {
             <span className="font-medium">{providerLabel}</span>
             <span>·</span>
             <span className="truncate max-w-[180px]">{email || "-"}</span>
+            <div className="ml-3 text-xs text-muted-foreground">
+              <div>계정 생성: {createdAt ? new Date(createdAt).toLocaleString() : "-"}</div>
+              <div>최근 로그인: {lastSignIn ? new Date(lastSignIn).toLocaleString() : "-"}</div>
+            </div>
           </div>
         </div>
 

@@ -16,10 +16,66 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
+  // profile display state for navbar
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
   useEffect(() => {
     setMounted(true);
-    supabase.auth.getUser().then(({ data }) => setSignedIn(!!data.user));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setSignedIn(!!session?.user));
+
+    const load = async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      setSignedIn(!!user);
+
+      if (user?.id) {
+        // try to read profiles table first, fall back to auth metadata
+        try {
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("display_name, avatar_url")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          setUserName(prof?.display_name ?? user.user_metadata?.display_name ?? (user.email ? String(user.email).split("@")[0] : null));
+          setUserAvatar(prof?.avatar_url ?? user.user_metadata?.avatar_url ?? null);
+        } catch (err) {
+          // if profiles table isn't available, use auth metadata
+          setUserName(user.user_metadata?.display_name ?? (user.email ? String(user.email).split("@")[0] : null));
+          setUserAvatar(user.user_metadata?.avatar_url ?? null);
+        }
+      }
+    };
+
+    load();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      const user = session?.user;
+      setSignedIn(!!user);
+      if (!user) {
+        setUserName(null);
+        setUserAvatar(null);
+      } else {
+        // refresh name/avatar on auth change
+        (async () => {
+          try {
+            const { data: prof } = await supabase
+              .from("profiles")
+              .select("display_name, avatar_url")
+              .eq("id", user.id)
+              .maybeSingle();
+
+            setUserName(prof?.display_name ?? user.user_metadata?.display_name ?? (user.email ? String(user.email).split("@")[0] : null));
+            setUserAvatar(prof?.avatar_url ?? user.user_metadata?.avatar_url ?? null);
+          } catch {
+            setUserName(user.user_metadata?.display_name ?? (user.email ? String(user.email).split("@")[0] : null));
+            setUserAvatar(user.user_metadata?.avatar_url ?? null);
+          }
+        })();
+      }
+    });
+
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -76,15 +132,38 @@ export default function Navbar() {
             {/* Right actions */}
             <div className="hidden md:flex items-center gap-3">
               {signedIn ? (
-                <>
-                  <Link href="/account/settings" className="text-sm opacity-90 hover:opacity-100">계정</Link>
+                <div className="relative">
                   <button
-                    onClick={() => supabase.auth.signOut()}
-                    className="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/15 text-sm"
+                    onClick={() => setMenuOpen((s) => !s)}
+                    className="flex items-center gap-3 px-2 py-1 rounded-full hover:bg-white/5 focus:outline-none"
                   >
-                    로그아웃
+                    {userAvatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={userAvatar} alt="avatar" className="w-8 h-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-white/10 grid place-items-center text-sm">
+                        {userName ? userName[0] : "?"}
+                      </div>
+                    )}
+                    <span className="text-sm font-medium truncate max-w-[140px]">{userName ?? "계정"}</span>
                   </button>
-                </>
+
+                  {menuOpen && (
+                    <div className="absolute right-0 mt-2 w-44 bg-white/5 backdrop-blur-md rounded-md border border-white/10 shadow-md py-1 z-50">
+                      <Link href="/account/settings" className="block px-4 py-2 text-sm hover:bg-white/10">설정</Link>
+                      <Link href="/account/settings" className="block px-4 py-2 text-sm hover:bg-white/10">프로필</Link>
+                      <button
+                        onClick={async () => {
+                          setMenuOpen(false);
+                          await supabase.auth.signOut();
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-white/10"
+                      >
+                        로그아웃
+                      </button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <Link href="/login" className="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/15 text-sm">로그인</Link>
               )}
