@@ -2,8 +2,9 @@
 
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { User, UserMetadata } from "@supabase/supabase-js";
 
-function deriveDisplayName(user: any): string | undefined {
+function deriveDisplayName(user: User): string | undefined {
   const m = user?.user_metadata || {};
   return (
     m.display_name ||
