@@ -17,6 +17,7 @@ export default function UpdatePasswordPage() {
   // If the user landed here from the email link, ensure we have a session.
   const [ready, setReady] = useState(false);
   const [isOAuth, setIsOAuth] = useState(false);
+  const [providerName, setProviderName] = useState<string | null>(null);
   const toast = useToast();
 
   useEffect(() => {
@@ -111,10 +112,12 @@ export default function UpdatePasswordPage() {
             toast.show({ title: "OAuth 계정", description: msg, variant: "error", duration: 6000 });
             // mark oauth and prevent password form from showing
             setIsOAuth(true);
+            setProviderName(prov);
             setMessage(null);
             setReady(false);
           } else {
             setIsOAuth(false);
+            setProviderName(null);
             setReady(true);
           }
         } else {
@@ -149,23 +152,46 @@ export default function UpdatePasswordPage() {
   return (
     <AuthCard title="새 비밀번호 설정" subtitle="메일 링크를 통해 접속하셨다면 비밀번호를 변경하세요.">
       {isOAuth ? (
-        <div className="space-y-4 text-center">
-          <p className="text-lg font-semibold">OAuth 계정입니다</p>
-          <p className="text-sm text-muted-foreground">
+        <div
+          role="region"
+          aria-labelledby="oauth-card-title"
+          className="space-y-4 text-center w-full max-w-lg mx-auto"
+        >
+          <div className="inline-flex items-center justify-center gap-3 bg-white/6 px-4 py-2 rounded-full mx-auto">
+            {/* Provider badge: show provider name for clarity */}
+            <span className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              {providerName ? providerName : "OAuth"}
+            </span>
+          </div>
+
+          <h2 id="oauth-card-title" className="text-2xl font-bold">
+            OAuth 계정입니다
+          </h2>
+
+          <p className="text-base text-muted-foreground max-w-prose mx-auto">
             이 계정은 소셜 로그인을 통해 생성된 계정이므로 비밀번호 재설정을 사용할 수 없습니다.
-            해당 공급자(예: GitHub, Discord)로 로그인해 주세요.
+            해당 공급자로 이동하여 로그인해 주세요.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-4">
-            <Button onClick={() => router.replace("/login")} className="px-6 py-2">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
+            <Button
+              onClick={() => router.replace("/login")}
+              className="px-6 py-3 text-sm font-medium rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-primary/60"
+              aria-label="로그인 페이지로 이동"
+            >
               로그인 하러가기
             </Button>
-            <Button variant="outline" onClick={() => router.replace("/account/settings")} className="px-6 py-2">
+            <Button
+              variant="outline"
+              onClick={() => router.replace("/account/settings")}
+              className="px-6 py-3 text-sm rounded-xl"
+              aria-label="계정 설정으로 이동"
+            >
               계정 설정으로 이동
             </Button>
           </div>
 
-          {message && <p className="text-xs text-muted-foreground mt-2">{message}</p>}
+          {message && <p className="text-sm text-muted-foreground mt-4">{message}</p>}
         </div>
       ) : (
         <div className="space-y-3">
