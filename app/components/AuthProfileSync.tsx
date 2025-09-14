@@ -16,7 +16,7 @@ function deriveDisplayName(user: User): string | undefined {
   );
 }
 
-function deriveAvatar(user: any): string | undefined {
+function deriveAvatar(user: User): string | undefined {
   const m = user?.user_metadata || {};
   return m.avatar_url || m.picture || undefined;
 }
