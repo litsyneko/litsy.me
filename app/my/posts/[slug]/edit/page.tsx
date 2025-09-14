@@ -136,8 +136,16 @@ export default function EditPostPage() {
       const formData = new FormData();
       formData.append("file", file);
 
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("로그인 세션이 없습니다.");
+      }
+
       const response = await fetch("/api/upload", {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: formData,
       });
 

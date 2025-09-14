@@ -60,8 +60,11 @@ export default function AccountSettingsPage() {
       const { data } = await supabase.auth.getUser();
       const user = data.user;
       setEmail(user?.email ?? "");
-      const p = (user?.identities?.[0]?.provider || user?.app_metadata?.provider || "EMAIL").toUpperCase();
-      setProvider(p);
+      const providerFromIdentities = user?.identities?.[0]?.provider;
+      const providerFromAppMeta = user?.app_metadata?.provider;
+      const providerFromUserMeta = user?.user_metadata?.provider;
+      const detected = providerFromIdentities || providerFromAppMeta || providerFromUserMeta || (user?.email ? "EMAIL" : "UNKNOWN");
+      setProvider(String(detected).toUpperCase());
 
       // auth timestamps
       setCreatedAt(user?.created_at ?? null);

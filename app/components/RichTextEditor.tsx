@@ -2,7 +2,6 @@
 
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
@@ -26,6 +25,7 @@ import {
   Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
   Palette, Type
 } from "lucide-react";
+import TiptapLink from "@tiptap/extension-link"; // Renamed to avoid conflict
 
 interface RichTextEditorProps {
   content: string;
@@ -36,14 +36,18 @@ interface RichTextEditorProps {
 const RichTextEditor = ({ content, onUpdate, editable = true }: RichTextEditorProps) => {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        // Disable default Link extension if StarterKit includes it
+        // Or ensure it's configured to not conflict
+        link: false,
+      }),
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true }),
       Underline,
       Subscript,
       Superscript,
-      Link.configure({
+      TiptapLink.configure({ // Use the renamed Link extension
         openOnClick: false,
         autolink: true,
         linkOnPaste: true,
