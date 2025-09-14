@@ -5,6 +5,7 @@ import "./globals.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HashRedirectToUpdate from "./components/HashRedirectToUpdate";
+import { ToastProvider } from "./components/ToastProvider";
 import ThemeProviderClient from "./components/ThemeProviderClient";
 
 const geistSans = Geist({
@@ -74,14 +75,16 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
     <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
       <ThemeProviderClient>
-        <HashRedirectToUpdate />
-        <div className="flex min-h-screen flex-col">
+        <ToastProvider>
+          <HashRedirectToUpdate />
+          <div className="flex min-h-screen flex-col">
             <Navbar />
             <div className="h-16 md:h-20" aria-hidden />
             <main className="flex-1">{children}</main>
             <Footer />
           </div>
-        </ThemeProviderClient>
+        </ToastProvider>
+      </ThemeProviderClient>
       </body>
     </html>
   );
