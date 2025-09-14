@@ -61,7 +61,7 @@ export default function UpdatePasswordPage() {
       }
     };
 
-    const validateSession = (user: any) => {
+    const validateSession = (user: import("@supabase/supabase-js").User | null) => {
       const provider = user?.app_metadata?.provider || "email";
       if (provider !== "email") {
         setProviderName(provider.toUpperCase());

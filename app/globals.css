@@ -141,6 +141,9 @@ html, body, #__next {
 }
 
 .glass-border {
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.dark .glass-border {
   border: 1px solid rgba(255,255,255,0.06);
 }
 
@@ -169,10 +172,17 @@ html, body, #__next {
 }
 
 /* Glass + glow utilities used on Home */
+/* Light theme: use subtle dark overlay to create visible card on white backgrounds.
+   Dark theme keeps the lighter translucent white look. */
 .glass-effect {
+  background: rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.08);
+  backdrop-filter: blur(10px);
+}
+/* Dark theme override keeps previous white glass look */
+.dark .glass-effect {
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.12);
-  backdrop-filter: blur(10px);
 }
 .hover-glow:hover {
   box-shadow: 0 10px 30px rgba(140,159,255,0.25);

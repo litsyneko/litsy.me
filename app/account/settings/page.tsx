@@ -33,6 +33,7 @@ export default function AccountSettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [updatingPw, setUpdatingPw] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // timestamps from auth user
   const [createdAt, setCreatedAt] = useState<string | null>(null);
@@ -188,6 +189,37 @@ export default function AccountSettingsPage() {
     }
   };
 
+  const onDeleteAccount = async () => {
+    // simple confirmation dialog; consider replacing with modal for better UX
+    if (!confirm("정말 계정을 탈퇴하시겠습니까? 이 작업은 복구할 수 없습니다.")) return;
+    setDeleting(true);
+    setMessage(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      setDeleting(false);
+      if (!res.ok) {
+        setMessage(body.error || "계정 탈퇴에 실패했습니다.");
+        return;
+      }
+      // sign out and redirect to home
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // ignore
+      }
+      router.replace("/");
+    } catch {
+      setDeleting(false);
+      setMessage("서버 요청 중 오류가 발생했습니다.");
+    }
+  };
+
   if (loading) return null;
 
   return (
@@ -327,6 +359,22 @@ export default function AccountSettingsPage() {
             <Button onClick={onUpdatePassword} disabled={!newPassword || !confirmPassword || updatingPw} className="mt-4 rounded-xl px-6 py-2.5 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground shadow-md transition-all duration-300 hover-lift">
               {updatingPw ? "변경 중..." : "비밀번호 변경"}
             </Button>
+
+            <hr className="my-6 border-t border-muted-foreground/10" />
+
+            <div className="mt-4 space-y-3">
+              <h3 className="text-sm font-semibold text-destructive">계정 탈퇴</h3>
+              <p className="text-sm text-muted-foreground">
+                계정을 삭제하면 프로필, 게시물(댓글 포함) 및 연결 데이터가 복구 불가능하게 삭제됩니다. 탈퇴 시 관련 데이터가 즉시 제거되며 복구할 수 없습니다.
+              </p>
+              <Button
+                onClick={onDeleteAccount}
+                disabled={deleting}
+                className="rounded-xl px-6 py-2.5 bg-destructive text-primary-foreground shadow-md transition-all duration-300 hover-lift"
+              >
+                {deleting ? "탈퇴 중..." : "계정 탈퇴"}
+              </Button>
+            </div>
           </section>
         )}
 
