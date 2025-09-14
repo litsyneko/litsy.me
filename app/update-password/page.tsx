@@ -7,259 +7,196 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "../components/ToastProvider";
 import AuthCard from "@/app/components/AuthCard";
 
+// 페이지의 상태를 명확하게 정의하는 타입
+type PageStatus = "loading" | "ready" | "oauth_error" | "direct_visit_error" | "invalid_link_error";
+
 export default function UpdatePasswordPage() {
   const router = useRouter();
+  const toast = useToast();
+
+  // 폼 입력을 위한 상태
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [formMessage, setFormMessage] = useState<string | null>(null);
 
-  // If the user landed here from the email link, ensure we have a session.
-  const [ready, setReady] = useState(false);
-  const [isOAuth, setIsOAuth] = useState(false);
+  // 컴포넌트의 상태를 관리하는 단일 상태 변수
+  const [pageStatus, setPageStatus] = useState<PageStatus>("loading");
   const [providerName, setProviderName] = useState<string | null>(null);
-  const [directVisit, setDirectVisit] = useState(false);
-  const [toastShown, setToastShown] = useState(false);
-  const toast = useToast();
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        // 도착 경로 판단: 사용자가 메일 링크로 왔는지(query/hash에 token/error가 있는지) 확인
-        let arrivedFromLink = false;
-        if (typeof window !== "undefined") {
-          const searchParams = new URLSearchParams(window.location.search);
-          const urlQueryError = searchParams.get("error") || searchParams.get("error_code") || searchParams.get("error_description");
-          const hasTokenQuery = !!searchParams.get("token") || !!searchParams.get("type");
-          const hash = window.location.hash || "";
-          const hashParams = new URLSearchParams(hash.replace("#", ""));
-          const urlHashError = hashParams.get("error") || hashParams.get("error_code") || hashParams.get("error_description");
-          const hasAccessToken = hash.includes("access_token");
-          const rawError = urlQueryError || urlHashError;
-          arrivedFromLink = !!(rawError || hasTokenQuery || hasAccessToken);
-
-          // Supabase에서 전달된 오류는 이 페이지에서만 토스트로 보여주도록 처리
-          if (rawError) {
-            const decoded = decodeURIComponent(rawError.replace(/\+/g, " "));
-            toast.show({
-              title: "인증 오류",
-              description: decoded || "링크가 유효하지 않거나 만료되었습니다.",
-              variant: "error",
-              duration: 6000,
-            });
-            setToastShown(true);
-            // fragment/query 제거하여 중복 표시를 방지
-            try {
-              const cleanUrl = window.location.pathname + window.location.search;
-              window.history.replaceState({}, document.title, cleanUrl);
-            } catch {
-              // noop
-            }
-            setLoading(false);
-            return;
-          }
-        }
-
-        // get current session safely
-        const sessionRes = await supabase.auth.getSession();
-        let session = sessionRes?.data?.session ?? null;
-
-        // If no session and user didn't arrive via link, treat as direct visit.
-        // Show explicit error card to avoid confusing users landing directly on this route.
-        if (!session && !arrivedFromLink) {
-          setLoading(false);
-          setDirectVisit(true);
+    const initialize = async () => {
+      // 1. URL 분석 및 에러 처리
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        const errorDescription = params.get("error_description");
+        if (errorDescription) {
+          toast.show({
+            title: "인증 오류",
+            description: decodeURIComponent(errorDescription) || "링크가 유효하지 않거나 만료되었습니다.",
+            variant: "error",
+          });
+          window.history.replaceState(null, "", window.location.pathname);
+          setPageStatus("invalid_link_error");
           return;
         }
-
-        // try exchange (handles magiclink/hash flow) and handle query token (verify) fallback
-        if (!session && arrivedFromLink) {
-          // If the link contains a query token (e.g. /verify?token=...&type=recovery), call the verify endpoint
-          if (typeof window !== "undefined") {
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get("token");
-            const tokenType = urlParams.get("type") || "recovery";
-            if (token) {
-              // Redirect the browser to Supabase verify endpoint so the server can redirect back
-              // with fragment tokens (access_token/refresh_token). Fetching here would not
-              // expose the redirect fragment to the browser.
-              const redirectTo = window.location.origin + "/update-password";
-              const verifyUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/verify?token=${encodeURIComponent(
-                token
-              )}&type=${encodeURIComponent(tokenType)}&redirect_to=${encodeURIComponent(redirectTo)}`;
-              window.location.href = verifyUrl;
-            }
-          }
-
-          // attempt exchangeCodeForSession (handles magiclink/hash flow)
-          await supabase.auth
-            .exchangeCodeForSession(typeof window !== "undefined" ? window.location.href : "")
-            .catch(() => null);
-
-          // if still no session, try parsing URL hash (older magic-link behavior)
-          if (!session && typeof window !== "undefined") {
-            const hash = window.location.hash || "";
-            if (hash) {
-              const params = new URLSearchParams(hash.replace("#", ""));
-              const access_token = params.get("access_token");
-              const refresh_token = params.get("refresh_token");
-                if (access_token) {
-                  await supabase.auth.setSession({ access_token, refresh_token: refresh_token ?? "" });
-                }
-            }
-          }
-
-          // refresh session after attempts
-          const refreshed = await supabase.auth.getSession();
-          session = refreshed?.data?.session ?? null;
-        }
-
-        if (session) {
-          // 확인: OAuth(소셜) 계정인 경우 비밀번호 재설정을 허용하지 않음
-          const { data: userData } = await supabase.auth.getUser();
-          const u = userData?.user;
-          const prov = (u?.identities?.[0]?.provider || u?.app_metadata?.provider || "EMAIL").toUpperCase();
-          if (prov !== "EMAIL") {
-            const msg = "이 계정은 OAuth 공급자로 생성된 계정입니다. 비밀번호 재설정을 이용할 수 없습니다. 해당 공급자로 로그인해 주세요.";
-            // show prominent error toast
-            toast.show({ title: "OAuth 계정", description: msg, variant: "error", duration: 6000 });
-            setToastShown(true);
-            // mark oauth and prevent password form from showing
-            setIsOAuth(true);
-            setProviderName(prov);
-            setMessage(null);
-            setReady(false);
-            } else {
-            setIsOAuth(false);
-            setProviderName(null);
-            setReady(true);
-            setToastShown(false);
-          }
-        } else {
-          setMessage("비밀번호 재설정 링크가 유효하지 않거나 만료되었습니다. 다시 요청해 주세요.");
-        }
-      } catch {
-        setMessage("세션 확인 중 오류가 발생했습니다. 다시 시도해 주세요.");
-      } finally {
-        setLoading(false);
       }
-    })();
-  }, []);
 
-  const onChangePassword = async () => {
-    if (password !== confirm) return setMessage("비밀번호가 일치하지 않습니다.");
-    if (!ready) return setMessage("세션을 확인할 수 없습니다. 재설정 링크로 다시 시도하세요.");
+      // 2. 세션 확인
+      const { data: { session } } = await supabase.auth.getSession();
+      const hasAccessToken = typeof window !== "undefined" && window.location.hash.includes("access_token");
+
+      if (session) {
+        validateSession(session.user);
+      } else if (hasAccessToken) {
+        // Supabase가 리디렉션 후 세션을 설정할 때까지 잠시 대기
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (event === "SIGNED_IN" && session) {
+            validateSession(session.user);
+            subscription.unsubscribe();
+          }
+        });
+      } else {
+        setPageStatus("direct_visit_error");
+      }
+    };
+
+    const validateSession = (user: any) => {
+      const provider = user?.app_metadata?.provider || "email";
+      if (provider !== "email") {
+        setProviderName(provider.toUpperCase());
+        setPageStatus("oauth_error");
+      } else {
+        setPageStatus("ready");
+      }
+    };
+
+    initialize();
+  }, [toast]);
+
+  const handlePasswordUpdate = async () => {
+    if (password.length < 6) {
+      setFormMessage("비밀번호는 6자 이상이어야 합니다.");
+      return;
+    }
+    if (password !== confirm) {
+      setFormMessage("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+    
     setLoading(true);
-    setMessage(null);
+    setFormMessage(null);
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
-    if (error) return setMessage(error.message);
-    setToastShown(false);
-    setMessage("비밀번호가 변경되었습니다. 로그인 페이지로 이동합니다.");
-    // optional: clear session after password change for security
-    try {
+
+    if (error) {
+      setFormMessage(error.message);
+    } else {
+      toast.show({
+        title: "성공",
+        description: "비밀번호가 변경되었습니다. 로그인 페이지로 이동합니다.",
+      });
       await supabase.auth.signOut();
-    } catch {
-      // ignore
+      setTimeout(() => router.replace("/login"), 1000);
     }
-    setTimeout(() => router.replace("/login"), 1000);
+  };
+  
+  // pageStatus에 따라 적절한 UI를 렌더링하는 함수
+  const renderContent = () => {
+    switch (pageStatus) {
+      case "loading":
+        return <p className="text-center text-muted-foreground">세션을 확인 중입니다...</p>;
+
+      case "ready":
+        return (
+          <div className="space-y-3">
+            <input
+              type="password"
+              placeholder="새 비밀번호 (6자 이상)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm"
+            />
+            <input
+              type="password"
+              placeholder="새 비밀번호 확인"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm"
+            />
+            <Button className="w-full" onClick={handlePasswordUpdate} disabled={loading || !password || !confirm}>
+              {loading ? "변경 중..." : "비밀번호 변경"}
+            </Button>
+            {formMessage && <p className="text-xs text-red-400 text-center pt-2">{formMessage}</p>}
+          </div>
+        );
+
+      case "oauth_error":
+        return (
+          <div className="space-y-4 text-center">
+             <div className="inline-flex items-center justify-center gap-3 bg-white/10 px-4 py-2 rounded-full mx-auto">
+               <span className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                 {providerName || "OAuth"}
+               </span>
+             </div>
+            <p className="text-base text-muted-foreground break-words">
+              이 계정은 소셜 로그인을 통해 생성되어 비밀번호를 변경할 수 없습니다.
+            </p>
+            <Button onClick={() => router.replace("/login")} className="w-full">
+              로그인 페이지로 이동
+            </Button>
+          </div>
+        );
+
+      case "direct_visit_error":
+        return (
+          <div className="space-y-4 text-center">
+            <p className="text-base text-muted-foreground break-words">
+              정상적인 경로로 접속되지 않았습니다. 비밀번호를 재설정하시려면 이메일의 링크를 이용해주세요.
+            </p>
+            <Button onClick={() => router.replace("/login")} className="w-full">
+              로그인 페이지로 이동
+            </Button>
+          </div>
+        );
+      
+      case "invalid_link_error":
+         return (
+          <div className="space-y-4 text-center">
+            <p className="text-base text-muted-foreground break-words">
+              링크가 만료되었거나 유효하지 않습니다. 비밀번호 재설정을 다시 요청해주세요.
+            </p>
+            <Button onClick={() => router.replace("/login")} className="w-full">
+              로그인 페이지로 이동
+            </Button>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // pageStatus에 따라 카드 제목을 결정하는 함수
+  const getTitle = () => {
+    switch (pageStatus) {
+      case "ready":
+        return "새 비밀번호 설정";
+      case "oauth_error":
+        return "소셜 로그인 계정";
+      case "loading":
+        return "확인 중...";
+      default:
+        return "오류";
+    }
   };
 
   return (
     <AuthCard
-      title={directVisit || isOAuth ? "오류" : "새 비밀번호 설정"}
-      subtitle={directVisit || isOAuth ? undefined : "메일 링크를 통해 접속하셨다면 비밀번호를 변경하세요."}
+      title={getTitle()}
+      subtitle={pageStatus === "ready" ? "메일 링크를 통해 접속하셨다면 비밀번호를 변경하세요." : undefined}
     >
-      {directVisit ? (
-        <div className="space-y-4 text-center w-full max-w-lg mx-auto">
-          <h2 className="text-2xl font-bold">오류</h2>
-          <p className="text-base text-muted-foreground max-w-prose mx-auto">
-            정상적인 경로로 접속되지 않은 것으로 확인되었습니다.
-          </p>
-          <p className="text-base text-muted-foreground max-w-prose mx-auto">
-            서비스 이용에 불편을 드려 죄송합니다. 문제가 계속되면 문의해 주세요.
-          </p>
-          <div className="flex justify-center mt-4">
-            <Button
-              onClick={() => router.replace("/login")}
-              className="px-6 py-3 text-sm font-medium rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-primary/60"
-              aria-label="로그인 페이지로 이동"
-            >
-              로그인 하러가기
-            </Button>
-          </div>
-        </div>
-      ) : isOAuth ? (
-        <div
-          role="region"
-          aria-labelledby="oauth-card-title"
-          className="space-y-4 text-center w-full max-w-lg mx-auto"
-        >
-          <div className="inline-flex items-center justify-center gap-3 bg-white/6 px-4 py-2 rounded-full mx-auto">
-            {/* Provider badge: show provider name for clarity */}
-            <span className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-              {providerName ? providerName : "OAuth"}
-            </span>
-          </div>
-
-          <h2 id="oauth-card-title" className="text-2xl font-bold">
-            OAuth 계정입니다
-          </h2>
-
-          <p className="text-base text-muted-foreground max-w-prose mx-auto">
-            이 계정은 소셜 로그인을 통해 생성된 계정이므로 비밀번호 재설정을 사용할 수 없습니다.
-            해당 공급자로 이동하여 로그인해 주세요.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
-            <Button
-              onClick={() => router.replace("/login")}
-              className="px-6 py-3 text-sm font-medium rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-primary/60"
-              aria-label="로그인 페이지로 이동"
-            >
-              로그인 하러가기
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => router.replace("/account/settings")}
-              className="px-6 py-3 text-sm rounded-xl"
-              aria-label="계정 설정으로 이동"
-            >
-              계정 설정으로 이동
-            </Button>
-          </div>
-
-          {message && !toastShown && <p className="text-sm text-muted-foreground mt-4">{message}</p>}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <input
-            type="password"
-            placeholder="새 비밀번호"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setToastShown(false);
-            }}
-            className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm"
-          />
-          <input
-            type="password"
-            placeholder="새 비밀번호 확인"
-            value={confirm}
-            onChange={(e) => {
-              setConfirm(e.target.value);
-              setToastShown(false);
-            }}
-            className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm"
-          />
-          <Button className="w-full" onClick={onChangePassword} disabled={loading || !password || !confirm}>
-            {loading ? "변경 중..." : "비밀번호 변경"}
-          </Button>
-          {message && !toastShown && <p className="text-xs text-muted-foreground">{message}</p>}
-        </div>
-      )}
+      {renderContent()}
     </AuthCard>
   );
 }
