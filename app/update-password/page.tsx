@@ -24,15 +24,20 @@ export default function UpdatePasswordPage() {
     (async () => {
       setLoading(true);
       try {
-        // 먼저: query 또는 hash에 Supabase error 파라미터가 있는지 검사하여
-        // 이 페이지에서 (update-password) 토스트로 표시하고 초기화합니다.
+        // 도착 경로 판단: 사용자가 메일 링크로 왔는지(query/hash에 token/error가 있는지) 확인
+        let arrivedFromLink = false;
         if (typeof window !== "undefined") {
           const searchParams = new URLSearchParams(window.location.search);
           const urlQueryError = searchParams.get("error") || searchParams.get("error_code") || searchParams.get("error_description");
+          const hasTokenQuery = !!searchParams.get("token") || !!searchParams.get("type");
           const hash = window.location.hash || "";
           const hashParams = new URLSearchParams(hash.replace("#", ""));
           const urlHashError = hashParams.get("error") || hashParams.get("error_code") || hashParams.get("error_description");
+          const hasAccessToken = hash.includes("access_token");
           const rawError = urlQueryError || urlHashError;
+          arrivedFromLink = !!(rawError || hasTokenQuery || hasAccessToken);
+
+          // Supabase에서 전달된 오류는 이 페이지에서만 토스트로 보여주도록 처리
           if (rawError) {
             const decoded = decodeURIComponent(rawError.replace(/\+/g, " "));
             toast.show({
@@ -57,8 +62,15 @@ export default function UpdatePasswordPage() {
         const sessionRes = await supabase.auth.getSession();
         let session = sessionRes?.data?.session ?? null;
 
+        // If no session and user didn't arrive via link, this is a normal direct visit:
+        // do not display "link invalid" errors; simply show the page neutral state.
+        if (!session && !arrivedFromLink) {
+          setLoading(false);
+          return;
+        }
+
         // try exchange (handles magiclink/hash flow) and handle query token (verify) fallback
-        if (!session) {
+        if (!session && arrivedFromLink) {
           // If the link contains a query token (e.g. /verify?token=...&type=recovery), call the verify endpoint
           if (typeof window !== "undefined") {
             const urlParams = new URLSearchParams(window.location.search);
@@ -68,13 +80,11 @@ export default function UpdatePasswordPage() {
               // Redirect the browser to Supabase verify endpoint so the server can redirect back
               // with fragment tokens (access_token/refresh_token). Fetching here would not
               // expose the redirect fragment to the browser.
-              if (typeof window !== "undefined") {
-                const redirectTo = window.location.origin + "/update-password";
-                const verifyUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/verify?token=${encodeURIComponent(
-                  token
-                )}&type=${encodeURIComponent(tokenType)}&redirect_to=${encodeURIComponent(redirectTo)}`;
-                window.location.href = verifyUrl;
-              }
+              const redirectTo = window.location.origin + "/update-password";
+              const verifyUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/verify?token=${encodeURIComponent(
+                token
+              )}&type=${encodeURIComponent(tokenType)}&redirect_to=${encodeURIComponent(redirectTo)}`;
+              window.location.href = verifyUrl;
             }
           }
 
