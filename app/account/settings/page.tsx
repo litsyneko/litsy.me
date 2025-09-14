@@ -1,34 +1,3 @@
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Account Settings | 릿시네코",
-  description: "계정 설정 페이지입니다. 프로필 정보, 이메일, 보안 설정을 관리할 수 있습니다.",
-  keywords: ["Account", "Settings", "Profile", "Security", "Email"],
-  authors: [{ name: "Litsy" }],
-  openGraph: {
-    title: "Account Settings | 릿시네코",
-    description: "계정 설정 페이지입니다. 프로필 정보, 이메일, 보안 설정을 관리할 수 있습니다.",
-    url: "https://litsy.me/account/settings",
-    siteName: "Litsy Portfolio",
-    images: [
-      {
-        url: "https://litsy.me/images/profile.png",
-        width: 1200,
-        height: 630,
-        alt: "Litsy Profile",
-      },
-    ],
-    locale: "ko_KR",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Account Settings | 릿시네코",
-    description: "계정 설정 페이지입니다. 프로필 정보, 이메일, 보안 설정을 관리할 수 있습니다.",
-    images: ["https://litsy.me/images/profile.png"],
-  },
-};
-
 "use client";
 
 import Link from "next/link";

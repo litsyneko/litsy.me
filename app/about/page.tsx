@@ -1,34 +1,3 @@
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "About | 릿시네코 - 개발자 소개",
-  description: "릿시네코에 대해 알아보세요. 4년 이상의 개발 경험을 가진 프론트엔드 개발자이자 Discord 봇 전문가입니다. HaruCream 팀에서 활동하고 있습니다.",
-  keywords: ["About", "개발자 소개", "Discord Bot", "웹 개발", "Next.js", "React", "TypeScript"],
-  authors: [{ name: "Litsy" }],
-  openGraph: {
-    title: "About | 릿시네코 - 개발자 소개",
-    description: "릿시네코에 대해 알아보세요. 4년 이상의 개발 경험을 가진 프론트엔드 개발자이자 Discord 봇 전문가입니다.",
-    url: "https://litsy.me/about",
-    siteName: "Litsy Portfolio",
-    images: [
-      {
-        url: "https://litsy.me/images/profile.png",
-        width: 1200,
-        height: 630,
-        alt: "Litsy Profile",
-      },
-    ],
-    locale: "ko_KR",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "About | 릿시네코 - 개발자 소개",
-    description: "릿시네코에 대해 알아보세요. 4년 이상의 개발 경험을 가진 프론트엔드 개발자이자 Discord 봇 전문가입니다.",
-    images: ["https://litsy.me/images/profile.png"],
-  },
-};
-
 'use client';
 
 import { useRef } from "react"
@@ -47,7 +16,7 @@ import {
   Target,
   Zap,
   Globe,
-  Briefcase,
+ Briefcase,
   Coffee,
   MapPin,
   Clock,

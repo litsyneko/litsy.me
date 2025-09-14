@@ -62,5 +62,24 @@ export const metadata: Metadata = {
     images: ['https://litsy.me/images/profile.png'],
     creator: '@litsyn',
   },
-
 };
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="ko" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <ThemeProviderClient>
+          <div className="flex min-h-screen flex-col">
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </div>
+        </ThemeProviderClient>
+      </body>
+    </html>
+  );
+}
