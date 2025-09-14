@@ -162,12 +162,18 @@ export default function UpdatePasswordPage() {
   };
 
   return (
-    <AuthCard title="새 비밀번호 설정" subtitle="메일 링크를 통해 접속하셨다면 비밀번호를 변경하세요.">
+    <AuthCard
+      title={directVisit || isOAuth ? "오류" : "새 비밀번호 설정"}
+      subtitle={directVisit || isOAuth ? undefined : "메일 링크를 통해 접속하셨다면 비밀번호를 변경하세요."}
+    >
       {directVisit ? (
         <div className="space-y-4 text-center w-full max-w-lg mx-auto">
           <h2 className="text-2xl font-bold">오류</h2>
           <p className="text-base text-muted-foreground max-w-prose mx-auto">
-            죄송합니다. 직접연결로 접속하신걸로 확인되었습니다. 이것이 문제가 있는 기술이라 판단된다면 문의해주세요
+            죄송합니다. 직접연결로 접속하신걸로 확인되었습니다.
+          </p>
+          <p className="text-base text-muted-foreground max-w-prose mx-auto">
+            이것이 문제가 있는 기술이라 판단되면 문의해 주세요.
           </p>
         </div>
       ) : isOAuth ? (
