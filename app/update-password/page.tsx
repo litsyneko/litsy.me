@@ -24,9 +24,28 @@ export default function UpdatePasswordPage() {
         const sessionRes = await supabase.auth.getSession();
         let session = sessionRes?.data?.session ?? null;
 
-        // try exchange (handles magiclink/hash flow)
+        // try exchange (handles magiclink/hash flow) and handle query token (verify) fallback
         if (!session) {
-          // attempt exchangeCodeForSession (may throw)
+          // If the link contains a query token (e.g. /verify?token=...&type=recovery), call the verify endpoint
+          if (typeof window !== "undefined") {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get("token");
+            const tokenType = urlParams.get("type") || "recovery";
+            if (token) {
+              // Redirect the browser to Supabase verify endpoint so the server can redirect back
+              // with fragment tokens (access_token/refresh_token). Fetching here would not
+              // expose the redirect fragment to the browser.
+              if (typeof window !== "undefined") {
+                const redirectTo = window.location.origin + "/update-password";
+                const verifyUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/verify?token=${encodeURIComponent(
+                  token
+                )}&type=${encodeURIComponent(tokenType)}&redirect_to=${encodeURIComponent(redirectTo)}`;
+                window.location.href = verifyUrl;
+              }
+            }
+          }
+
+          // attempt exchangeCodeForSession (handles magiclink/hash flow)
           await supabase.auth
             .exchangeCodeForSession(typeof window !== "undefined" ? window.location.href : "")
             .catch(() => null);
@@ -50,7 +69,17 @@ export default function UpdatePasswordPage() {
         }
 
         if (session) {
-          setReady(true);
+          // 확인: OAuth(소셜) 계정인 경우 비밀번호 재설정을 허용하지 않음
+          const { data: userData } = await supabase.auth.getUser();
+          const u = userData?.user;
+          const prov = (u?.identities?.[0]?.provider || u?.app_metadata?.provider || "EMAIL").toUpperCase();
+          if (prov !== "EMAIL") {
+            // 사용자에게 명확한 오류 메시지 노출 (예: GitHub/Discord로 생성된 계정)
+            setMessage("오류: 이 계정은 OAuth 공급자로 생성된 계정입니다. 비밀번호 재설정이 불가능합니다. 해당 공급자로 로그인해 주세요.");
+            setReady(false);
+          } else {
+            setReady(true);
+          }
         } else {
           setMessage("비밀번호 재설정 링크가 유효하지 않거나 만료되었습니다. 다시 요청해 주세요.");
         }
