@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
@@ -258,7 +259,7 @@ export default function AccountSettingsPage() {
         )}
 
         <div className="mt-6 flex items-center justify-between">
-          <a href="/" className="underline text-sm">홈으로</a>
+          <Link href="/" className="underline text-sm">홈으로</Link>
           <Button variant="outline" onClick={async () => { await supabase.auth.signOut(); router.replace("/"); }}>로그아웃</Button>
         </div>
 

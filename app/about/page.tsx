@@ -479,7 +479,7 @@ export default function AboutPage() {
                 
                 <div className="space-y-6 text-muted-foreground leading-relaxed text-lg">
                   <p>
-                    <span className="text-primary font-semibold">"2020년 Discord 봇에 푹 빠진 것"</span>이 모든 시작이었습니다. 
+                    <span className="text-primary font-semibold">&quot;2020년 Discord 봇에 푹 빠진 것&quot;</span>이 모든 시작이었습니다. 
                     밤새워 코딩하며 새로운 기능을 구현하던 그 열정이 지금까지도 저를 움직이는 원동력입니다.
                   </p>
                   <p>
