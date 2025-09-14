@@ -19,6 +19,7 @@ export default function UpdatePasswordPage() {
   const [isOAuth, setIsOAuth] = useState(false);
   const [providerName, setProviderName] = useState<string | null>(null);
   const [directVisit, setDirectVisit] = useState(false);
+  const [toastShown, setToastShown] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function UpdatePasswordPage() {
               variant: "error",
               duration: 6000,
             });
+            setToastShown(true);
             // fragment/query 제거하여 중복 표시를 방지
             try {
               const cleanUrl = window.location.pathname + window.location.search;
@@ -122,15 +124,17 @@ export default function UpdatePasswordPage() {
             const msg = "이 계정은 OAuth 공급자로 생성된 계정입니다. 비밀번호 재설정을 이용할 수 없습니다. 해당 공급자로 로그인해 주세요.";
             // show prominent error toast
             toast.show({ title: "OAuth 계정", description: msg, variant: "error", duration: 6000 });
+            setToastShown(true);
             // mark oauth and prevent password form from showing
             setIsOAuth(true);
             setProviderName(prov);
             setMessage(null);
             setReady(false);
-          } else {
+            } else {
             setIsOAuth(false);
             setProviderName(null);
             setReady(true);
+            setToastShown(false);
           }
         } else {
           setMessage("비밀번호 재설정 링크가 유효하지 않거나 만료되었습니다. 다시 요청해 주세요.");
@@ -151,6 +155,7 @@ export default function UpdatePasswordPage() {
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
     if (error) return setMessage(error.message);
+    setToastShown(false);
     setMessage("비밀번호가 변경되었습니다. 로그인 페이지로 이동합니다.");
     // optional: clear session after password change for security
     try {
@@ -225,7 +230,7 @@ export default function UpdatePasswordPage() {
             </Button>
           </div>
 
-          {message && <p className="text-sm text-muted-foreground mt-4">{message}</p>}
+          {message && !toastShown && <p className="text-sm text-muted-foreground mt-4">{message}</p>}
         </div>
       ) : (
         <div className="space-y-3">
@@ -233,20 +238,26 @@ export default function UpdatePasswordPage() {
             type="password"
             placeholder="새 비밀번호"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setToastShown(false);
+            }}
             className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm"
           />
           <input
             type="password"
             placeholder="새 비밀번호 확인"
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={(e) => {
+              setConfirm(e.target.value);
+              setToastShown(false);
+            }}
             className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm"
           />
           <Button className="w-full" onClick={onChangePassword} disabled={loading || !password || !confirm}>
             {loading ? "변경 중..." : "비밀번호 변경"}
           </Button>
-          {message && <p className="text-xs text-muted-foreground">{message}</p>}
+          {message && !toastShown && <p className="text-xs text-muted-foreground">{message}</p>}
         </div>
       )}
     </AuthCard>
