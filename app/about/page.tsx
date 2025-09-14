@@ -483,17 +483,17 @@ export default function AboutPage() {
                     밤새워 코딩하며 새로운 기능을 구현하던 그 열정이 지금까지도 저를 움직이는 원동력입니다.
                   </p>
                   <p>
-                    <span className="text-primary font-semibold">"Team Alpha에서 배운 협업의 가치"</span>는 소중한 자산이 되었습니다. 
+                    <span className="text-primary font-semibold">&quot;Team Alpha에서 배운 협업의 가치&quot;</span>는 소중한 자산이 되었습니다.
                     좋은 팀이었지만 각자의 사정으로 해체되었던 경험을 통해, 현재 팀 HaruCream에서는 더욱 단단한 팀워크를 만들어가고 있습니다.
                   </p>
                   <p>
-                    <span className="text-primary font-semibold">"VTuber와 AI에 대한 관심"</span>도 개발에 새로운 영감을 줍니다.
+                    <span className="text-primary font-semibold">&quot;VTuber와 AI에 대한 관심&quot;</span>도 개발에 새로운 영감을 줍니다.
                     유나리에서 릿시로 이름을 바꾸며 새로운 출발을 한 것처럼, 항상 새로운 도전을 두려워하지 않는 개발자입니다.
                   </p>
                   <div className="flex items-center justify-center gap-3 pt-6">
                     <Star className="w-5 h-5 text-yellow-500 fill-current dark:text-yellow-400" />
                     <span className="text-base italic text-muted-foreground font-medium">
-                      &quot;끊임없는 열정과 새로운 도전, 그리고 팀과 함께하는 성장";
+                      &quot;끊임없는 열정과 새로운 도전, 그리고 팀과 함께하는 성장&quot;
                     </span>
                     <Star className="w-5 h-5 text-yellow-500 fill-current dark:text-yellow-400" />
                   </div>
