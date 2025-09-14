@@ -58,12 +58,17 @@ export default function AccountSettingsPage() {
       const p = (user?.identities?.[0]?.provider || user?.app_metadata?.provider || "EMAIL").toUpperCase();
       setProvider(p);
       if (user?.id) {
+        // 프로필 테이블에서 정보 가져오기
         const { data: prof } = await supabase
           .from("profiles")
           .select("display_name, avatar_url")
           .eq("id", user.id)
           .maybeSingle();
-        setDisplayName(prof?.display_name ?? "");
+        
+        // auth user metadata에서 display_name 가져오기 (프로필 테이블에 없을 경우 대비)
+        const displayNameFromAuth = user.user_metadata?.display_name;
+        
+        setDisplayName(prof?.display_name || displayNameFromAuth || "");
         setAvatarUrl(prof?.avatar_url ?? null);
       }
       setLoading(false);
@@ -80,12 +85,24 @@ export default function AccountSettingsPage() {
     const { data } = await supabase.auth.getUser();
     const user = data.user;
     if (!user) return;
-    const { error } = await supabase
+    
+    // 프로필 테이블 업데이트
+    const { error: profileError } = await supabase
       .from("profiles")
       .upsert({ id: user.id, display_name: displayName.trim() });
-    if (!error) await supabase.auth.updateUser({ data: { display_name: displayName.trim() } });
+    
+    // Auth user metadata 업데이트
+    const { error: authError } = await supabase.auth.updateUser({ 
+      data: { display_name: displayName.trim() } 
+    });
+    
     setSavingProfile(false);
-    setMessage(error ? error.message : "프로필이 저장되었습니다.");
+    
+    if (profileError || authError) {
+      setMessage(`오류: ${profileError?.message || authError?.message}`);
+    } else {
+      setMessage("프로필이 저장되었습니다.");
+    }
   };
 
   const onAvatarUploaded = async (url: string) => {
@@ -127,35 +144,35 @@ export default function AccountSettingsPage() {
   if (loading) return null;
 
   return (
-    <section className="px-4 pt-10 pb-16">
-      <div className="mx-auto max-w-6xl">
+    <section className="px-4 sm:px-6 pt-12 pb-16">
+      <div className="mx-auto max-w-4xl">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 glass-effect rounded-2xl p-4 md:p-6 hover-glow transition-all duration-300">
           <div className="flex items-center gap-4 min-w-0">
-            <div className="h-14 w-14 rounded-2xl overflow-hidden bg-white/5 ring-1 ring-black/10 dark:ring-white/10">
+            <div className="h-16 w-16 rounded-2xl overflow-hidden ring-2 ring-primary/20 shadow-lg">
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
               ) : (
-                <div className="h-full w-full grid place-items-center text-sm text-muted-foreground">{displayName ? displayName[0] : "?"}</div>
+                <div className="h-full w-full grid place-items-center text-lg font-bold text-primary bg-primary/10">{displayName ? displayName[0] : "?"}</div>
               )}
             </div>
             <div className="min-w-0">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">계정 설정</h1>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight gradient-text">계정 설정</h1>
               <p className="text-sm md:text-base text-muted-foreground truncate">프로필, 이메일, 보안을 관리하세요.</p>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2 text-xs md:text-sm rounded-full px-3 py-1 bg-[color:var(--primary)/0.12] border border-[color:var(--primary)/0.25] text-primary whitespace-nowrap">
+          <div className="flex items-center gap-2 text-xs md:text-sm rounded-full px-4 py-2 bg-gradient-to-r from-primary/20 to-secondary/20 border border-primary/30 text-primary whitespace-nowrap shadow-md">
             {provider === "DISCORD" ? (
-              <FaDiscord className="w-3.5 h-3.5" />
+              <FaDiscord className="w-4 h-4" />
             ) : provider === "GITHUB" ? (
-              <Github className="w-3.5 h-3.5" />
+              <Github className="w-4 h-4" />
             ) : (
-              <Mail className="w-3.5 h-3.5" />
+              <Mail className="w-4 h-4" />
             )}
-            <span>{providerLabel}</span>
+            <span className="font-medium">{providerLabel}</span>
             <span>·</span>
-            <span>{email || "-"}</span>
+            <span className="truncate max-w-[180px]">{email || "-"}</span>
           </div>
         </div>
 
@@ -166,10 +183,10 @@ export default function AccountSettingsPage() {
               key={id}
               onClick={() => setActive(id)}
               aria-current={active === id ? "page" : undefined}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-full border text-sm transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full border text-sm font-medium transition-all duration-300 hover-lift ${
                 active === id
-                  ? "bg-[color:var(--primary)/0.12] border-[color:var(--primary)/0.25] text-primary"
-                  : "bg-white/5 border-white/10 hover:bg-white/10"
+                  ? "bg-gradient-to-r from-primary/20 to-secondary/20 border-primary/30 text-primary shadow-md"
+                  : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
               } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40`}
             >
               <Icon className="w-4 h-4" />
@@ -180,23 +197,25 @@ export default function AccountSettingsPage() {
 
         {/* Panels */}
         {active === "profile" && (
-          <section className="rounded-3xl p-6 md:p-8 bg-card text-card-foreground border border-[color:var(--primary)/0.15] shadow-lg ring-1 ring-[color:var(--primary)/0.12] hover:ring-[color:var(--primary)/0.2] transition-shadow">
+          <section className="rounded-3xl p-6 md:p-8 glass-effect border border-primary/20 shadow-xl ring-1 ring-primary/10 hover:ring-primary/30 transition-all duration-300 hover-lift">
             <h2 className="text-lg font-semibold tracking-tight mb-1 flex items-center gap-2"><User className="w-4 h-4" /> 프로필</h2>
             <p className="text-sm text-muted-foreground mb-4">프로필 이미지와 표시 이름을 설정하세요.</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
               <div>
                 <AvatarUploader onUploaded={onAvatarUploaded} />
               </div>
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-sm font-medium">표시 이름</label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
-                  placeholder="예: 릿시"
-                />
-                <Button onClick={onSaveProfile} disabled={!displayName.trim() || savingProfile} className="mt-2 rounded-xl">
+              <div className="md:col-span-2 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">표시 이름</label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 backdrop-blur-sm"
+                    placeholder="예: 릿시"
+                  />
+                </div>
+                <Button onClick={onSaveProfile} disabled={!displayName.trim() || savingProfile} className="mt-2 rounded-xl px-6 py-2.5 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground shadow-md transition-all duration-300 hover-lift">
                   {savingProfile ? "저장 중..." : "프로필 저장"}
                 </Button>
               </div>
@@ -205,20 +224,22 @@ export default function AccountSettingsPage() {
         )}
 
         {active === "account" && (
-          <section className="rounded-3xl p-6 md:p-8 bg-card text-card-foreground border border-[color:var(--primary)/0.15] shadow-lg ring-1 ring-[color:var(--primary)/0.12] hover:ring-[color:var(--primary)/0.2] transition-shadow">
+          <section className="rounded-3xl p-6 md:p-8 glass-effect border border-primary/20 shadow-xl ring-1 ring-primary/10 hover:ring-primary/30 transition-all duration-300 hover-lift">
             <h2 className="text-lg font-semibold tracking-tight mb-1 flex items-center gap-2"><Mail className="w-4 h-4" /> 이메일</h2>
             <p className="text-sm text-muted-foreground mb-4">새 이메일로 변경 시 인증 메일이 전송됩니다.</p>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">새 이메일</label>
-              <input
-                type="email"
-                placeholder="example@email.com"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
-              />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">새 이메일</label>
+                <input
+                  type="email"
+                  placeholder="example@email.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 backdrop-blur-sm"
+                />
+              </div>
               <div>
-                <Button onClick={onUpdateEmail} disabled={!newEmail.trim() || sendingEmail} className="rounded-xl">
+                <Button onClick={onUpdateEmail} disabled={!newEmail.trim() || sendingEmail} className="rounded-xl px-6 py-2.5 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground shadow-md transition-all duration-300 hover-lift">
                   {sendingEmail ? "전송 중..." : "변경 링크 보내기"}
                 </Button>
               </div>
@@ -227,10 +248,10 @@ export default function AccountSettingsPage() {
         )}
 
         {active === "security" && (
-          <section className="rounded-3xl p-6 md:p-8 bg-card text-card-foreground border border-[color:var(--primary)/0.15] shadow-lg ring-1 ring-[color:var(--primary)/0.12] hover:ring-[color:var(--primary)/0.2] transition-shadow">
+          <section className="rounded-3xl p-6 md:p-8 glass-effect border border-primary/20 shadow-xl ring-1 ring-primary/10 hover:ring-primary/30 transition-all duration-300 hover-lift">
             <h2 className="text-lg font-semibold tracking-tight mb-1 flex items-center gap-2"><Shield className="w-4 h-4" /> 보안</h2>
             <p className="text-sm text-muted-foreground mb-4">비밀번호를 안전하게 변경하세요.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">새 비밀번호</label>
                 <input
@@ -238,7 +259,7 @@ export default function AccountSettingsPage() {
                   placeholder="새 비밀번호"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 backdrop-blur-sm"
                 />
               </div>
               <div className="space-y-2">
@@ -248,19 +269,21 @@ export default function AccountSettingsPage() {
                   placeholder="새 비밀번호 확인"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 backdrop-blur-sm"
                 />
               </div>
             </div>
-            <Button onClick={onUpdatePassword} disabled={!newPassword || !confirmPassword || updatingPw} className="mt-3 rounded-xl">
+            <Button onClick={onUpdatePassword} disabled={!newPassword || !confirmPassword || updatingPw} className="mt-4 rounded-xl px-6 py-2.5 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground shadow-md transition-all duration-300 hover-lift">
               {updatingPw ? "변경 중..." : "비밀번호 변경"}
             </Button>
           </section>
         )}
 
-        <div className="mt-6 flex items-center justify-between">
-          <Link href="/" className="underline text-sm">홈으로</Link>
-          <Button variant="outline" onClick={async () => { await supabase.auth.signOut(); router.replace("/"); }}>로그아웃</Button>
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 glass-effect rounded-xl p-4">
+          <Link href="/" className="text-sm text-primary hover:text-primary/80 transition-colors underline underline-offset-2 hover:underline-offset-4">홈으로</Link>
+          <Button variant="outline" onClick={async () => { await supabase.auth.signOut(); router.replace("/"); }} className="rounded-xl px-4 py-2 border-primary/30 text-primary hover:bg-primary/10 transition-all duration-300 hover-lift">
+            로그아웃
+          </Button>
         </div>
 
         {message && <p className="mt-3 text-xs text-muted-foreground">{message}</p>}
@@ -268,4 +291,3 @@ export default function AccountSettingsPage() {
     </section>
   );
 }
-
