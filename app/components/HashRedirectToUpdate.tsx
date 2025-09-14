@@ -19,7 +19,7 @@ export default function HashRedirectToUpdate() {
       // Only redirect when on the root path (avoid interfering on other pages)
       if (window.location.pathname === "/" || window.location.pathname === "") {
         // If fragment contains an access_token OR an error, forward to update-password preserving fragment
-        if (hash.includes("access_token") || hash.includes("error")) {
+        if ((hash.includes("access_token") && hash.includes("type=reset_password")) || hash.includes("error")) {
           const target = "/update-password" + hash;
           // replace so back button doesn't return to the fragment-at-root
           window.location.replace(target);
