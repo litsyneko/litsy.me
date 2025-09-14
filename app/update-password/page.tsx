@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { useToast } from "../components/ToastProvider";
 import AuthCard from "@/app/components/AuthCard";
 
 export default function UpdatePasswordPage() {
@@ -15,11 +16,41 @@ export default function UpdatePasswordPage() {
 
   // If the user landed here from the email link, ensure we have a session.
   const [ready, setReady] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
+        // 먼저: query 또는 hash에 Supabase error 파라미터가 있는지 검사하여
+        // 이 페이지에서 (update-password) 토스트로 표시하고 초기화합니다.
+        if (typeof window !== "undefined") {
+          const searchParams = new URLSearchParams(window.location.search);
+          const urlQueryError = searchParams.get("error") || searchParams.get("error_code") || searchParams.get("error_description");
+          const hash = window.location.hash || "";
+          const hashParams = new URLSearchParams(hash.replace("#", ""));
+          const urlHashError = hashParams.get("error") || hashParams.get("error_code") || hashParams.get("error_description");
+          const rawError = urlQueryError || urlHashError;
+          if (rawError) {
+            const decoded = decodeURIComponent(rawError.replace(/\+/g, " "));
+            toast.show({
+              title: "인증 오류",
+              description: decoded || "링크가 유효하지 않거나 만료되었습니다.",
+              variant: "error",
+              duration: 6000,
+            });
+            // fragment/query 제거하여 중복 표시를 방지
+            try {
+              const cleanUrl = window.location.pathname + window.location.search;
+              window.history.replaceState({}, document.title, cleanUrl);
+            } catch {
+              // noop
+            }
+            setLoading(false);
+            return;
+          }
+        }
+
         // get current session safely
         const sessionRes = await supabase.auth.getSession();
         let session = sessionRes?.data?.session ?? null;
@@ -74,8 +105,11 @@ export default function UpdatePasswordPage() {
           const u = userData?.user;
           const prov = (u?.identities?.[0]?.provider || u?.app_metadata?.provider || "EMAIL").toUpperCase();
           if (prov !== "EMAIL") {
-            // 사용자에게 명확한 오류 메시지 노출 (예: GitHub/Discord로 생성된 계정)
-            setMessage("오류: 이 계정은 OAuth 공급자로 생성된 계정입니다. 비밀번호 재설정이 불가능합니다. 해당 공급자로 로그인해 주세요.");
+            const msg = "오류: 이 계정은 OAuth 공급자로 생성된 계정입니다. 비밀번호 재설정이 불가능합니다. 해당 공급자로 로그인해 주세요.";
+            // show error toast (clear "오류:" prefix for title/description)
+            toast.show({ title: "오류", description: msg.replace(/^오류:\s*/, ""), variant: "error", duration: 6000 });
+            // suppress inline page message so the toast is the primary error indicator
+            setMessage(null);
             setReady(false);
           } else {
             setReady(true);
