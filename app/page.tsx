@@ -1,3 +1,34 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Litsy - Frontend Developer & Discord Bot Developer",
+  description: "릿시입니다. 4년 이상의 개발 경험을 가진 프론트엔드 개발자이자 Discord 봇 전문가입니다. 사용자 경험을 최우선으로 생각하는 개발 철학으로 HaruCream 팀에서 활동하고 있습니다.",
+  keywords: ["릿시", "Litsy", "프론트엔드 개발자", "디스코드 봇 개발자", "Next.js", "React", "TypeScript", "Node.js", "웹 개발"],
+  authors: [{ name: "Litsy" }],
+  openGraph: {
+    title: "Litsy - Frontend Developer & Discord Bot Developer",
+    description: "릿시입니다. 4년 이상의 개발 경험을 가진 프론트엔드 개발자이자 Discord 봇 전문가입니다. 사용자 경험을 최우선으로 생각하는 개발 철학으로 프로젝트를 진행합니다.",
+    url: "https://litsy.me",
+    siteName: "Litsy Portfolio",
+    images: [
+      {
+        url: "https://litsy.me/images/profile.png",
+        width: 1200,
+        height: 630,
+        alt: "Litsy Profile",
+      },
+    ],
+    locale: "ko_KR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Litsy - Frontend Developer & Discord Bot Developer",
+    description: "릿시입니다. 4년 이상의 개발 경험을 가진 프론트엔드 개발자이자 Discord 봇 전문가입니다.",
+    images: ["https://litsy.me/images/profile.png"],
+  },
+};
+
 "use client";
 
 import Link from "next/link";
