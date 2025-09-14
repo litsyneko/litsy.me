@@ -40,7 +40,7 @@ export default function Navbar() {
 
           setUserName(prof?.display_name ?? user.user_metadata?.display_name ?? (user.email ? String(user.email).split("@")[0] : null));
           setUserAvatar(prof?.avatar_url ?? user.user_metadata?.avatar_url ?? null);
-        } catch (err) {
+        } catch {
           // if profiles table isn't available, use auth metadata
           setUserName(user.user_metadata?.display_name ?? (user.email ? String(user.email).split("@")[0] : null));
           setUserAvatar(user.user_metadata?.avatar_url ?? null);
@@ -149,15 +149,15 @@ export default function Navbar() {
                   </button>
 
                   {menuOpen && (
-                    <div className="absolute right-0 mt-2 w-44 bg-white/5 backdrop-blur-md rounded-md border border-white/10 shadow-md py-1 z-50">
-                      <Link href="/account/settings" className="block px-4 py-2 text-sm hover:bg-white/10">설정</Link>
-                      <Link href="/account/settings" className="block px-4 py-2 text-sm hover:bg-white/10">프로필</Link>
+                    <div className="absolute right-0 mt-2 w-44 bg-background/90 backdrop-blur-md rounded-md border border-border shadow-lg py-1 z-50">
+                      <Link href="/account/settings" className="block px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground">설정</Link>
+                      <Link href="/account/settings" className="block px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground">프로필</Link>
                       <button
                         onClick={async () => {
                           setMenuOpen(false);
                           await supabase.auth.signOut();
                         }}
-                        className="w-full text-left px-4 py-2 text-sm hover:bg-white/10"
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
                       >
                         로그아웃
                       </button>
