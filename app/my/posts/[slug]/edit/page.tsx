@@ -36,6 +36,7 @@ export default function EditPostPage() {
   const [published, setPublished] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [initialPost, setInitialPost] = useState<Post | null>(null);
 
@@ -102,6 +103,66 @@ export default function EditPostPage() {
   const handleMainImageUrlChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setMainImageUrl(e.target.value);
   }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.show({
+        title: "오류",
+        description: "지원하지 않는 파일 형식입니다. JPEG, PNG, GIF, WebP만 가능합니다.",
+        variant: "error",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast.show({
+        title: "오류",
+        description: "파일 크기가 너무 큽니다. 최대 5MB까지 가능합니다.",
+        variant: "error",
+      });
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "업로드 실패");
+      }
+
+      setMainImageUrl(result.url);
+      toast.show({
+        title: "성공",
+        description: "이미지가 성공적으로 업로드되었습니다.",
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.show({
+        title: "오류",
+        description: error instanceof Error ? error.message : "이미지 업로드에 실패했습니다.",
+        variant: "error",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleUpdatePost = async () => {
     if (!title.trim() || !slug.trim() || !content.trim()) {
@@ -213,15 +274,46 @@ export default function EditPostPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="mainImageUrl">대표 이미지 URL</Label>
-            <Input
-              id="mainImageUrl"
-              type="text"
-              value={mainImageUrl}
-              onChange={handleMainImageUrlChange}
-              placeholder="https://example.com/image.jpg"
-              className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 backdrop-blur-sm"
-            />
+            <Label htmlFor="mainImageUrl">대표 이미지</Label>
+            <div className="space-y-3">
+              <Input
+                id="mainImageUrl"
+                type="text"
+                value={mainImageUrl}
+                onChange={handleMainImageUrlChange}
+                placeholder="이미지 URL을 입력하거나 파일을 선택하세요"
+                className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 backdrop-blur-sm"
+              />
+              <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="inline-flex items-center px-4 py-2 rounded-lg border border-white/20 bg-white/5 hover:bg-white/10 text-sm cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploading ? "업로드 중..." : "파일 선택"}
+                </label>
+                <span className="text-xs text-muted-foreground">
+                  JPEG, PNG, GIF, WebP (최대 5MB)
+                </span>
+              </div>
+              {mainImageUrl && (
+                <div className="mt-3">
+                  <p className="text-sm text-muted-foreground mb-2">미리보기:</p>
+                  <img
+                    src={mainImageUrl}
+                    alt="대표 이미지 미리보기"
+                    className="max-w-full h-32 object-cover rounded-lg border border-white/10"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
