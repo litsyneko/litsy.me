@@ -39,8 +39,11 @@ export default function UpdatePasswordPage() {
               const access_token = params.get("access_token");
               const refresh_token = params.get("refresh_token");
               if (access_token) {
-                // setSession accepts strings; cast to any to satisfy TS (values are present)
-                await supabase.auth.setSession({ access_token, refresh_token } as any);
+                const sess = {
+                  access_token,
+                  refresh_token: refresh_token ?? "",
+                };
+                await supabase.auth.setSession(sess as any);
               }
             }
           }
@@ -55,7 +58,7 @@ export default function UpdatePasswordPage() {
         } else {
           setMessage("비밀번호 재설정 링크가 유효하지 않거나 만료되었습니다. 다시 요청해 주세요.");
         }
-      } catch (err) {
+      } catch {
         setMessage("세션 확인 중 오류가 발생했습니다. 다시 시도해 주세요.");
       } finally {
         setLoading(false);
