@@ -11,6 +11,15 @@ type Props = {
   displayName?: string;
 };
 
+function sanitizeFileName(name: string) {
+  // 허용 문자만 남기고 나머지는 '_'로 치환, 길이 제한
+  return name
+    .normalize("NFKD")
+    .replace(/[^\w.\-]/g, "_")
+    .replace(/_+/g, "_")
+    .slice(0, 200);
+}
+
 export default function AvatarUploader({ onUploaded, className, currentAvatarUrl, displayName }: Props) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,47 +32,76 @@ export default function AvatarUploader({ onUploaded, className, currentAvatarUrl
     setUploading(true);
 
     try {
-      // avatars 버킷이 존재하는지 확인하고, 없으면 생성
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const avatarsBucket = buckets?.find((bucket) => bucket.name === "avatars");
+      // 현재 로그인한 사용자 확인
+      const { data: userData, error: getUserError } = await supabase.auth.getUser();
+      if (getUserError) throw getUserError;
+      const user = userData.user;
+      if (!user?.id) throw new Error("인증된 사용자를 찾을 수 없습니다.");
 
-      if (!avatarsBucket) {
-        const { error: createBucketError } = await supabase.storage.createBucket("avatars", {
-          public: true,
-        });
-        if (createBucketError) {
-          console.log("avatars 버킷 생성 시도:", createBucketError.message);
+      const userId = user.id;
+
+      // avatars 버킷이 존재하는지 확인하고, 없으면 생성 (실패시 무시)
+      try {
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const avatarsBucket = buckets?.find((bucket) => bucket.name === "avatars");
+        if (!avatarsBucket) {
+          const { error: createBucketError } = await supabase.storage.createBucket("avatars", {
+            public: true,
+          });
+          if (createBucketError) {
+            console.log("avatars 버킷 생성 시도:", createBucketError.message);
+          }
         }
+      } catch (err) {
+        console.warn("버킷 확인 중 경고:", err);
       }
 
+      // 안전한 파일명 생성
+      const safeName = sanitizeFileName(file.name);
+      const timestamp = Date.now();
+      const tempFileName = `temp_${timestamp}_${safeName}`;
+      const tempPath = `temp/${userId}/${tempFileName}`;
+
       // 1. 임시 파일 업로드
-      const tempFileName = `temp_${Date.now()}-${file.name}`.replace(/\s+/g, "_");
-      const tempPath = `temp/${tempFileName}`;
       const { error: tempUploadErr } = await supabase.storage.from("avatars").upload(tempPath, file, { upsert: true });
 
       if (tempUploadErr) throw tempUploadErr;
 
       console.log("임시 파일 업로드 완료:", tempPath);
 
-      // 2. 파일 처리 (현재는 간단한 검증만 수행)
-      await processUploadedFile(tempPath);
+      // 2. 파일 처리 (검증)
+      await processUploadedFile(userId, tempFileName);
 
-      // 3. 최종 경로로 복사 (native copy 사용)
-      const finalFileName = `${Date.now()}-${file.name}`.replace(/\s+/g, "_");
-      const finalPath = `public/${finalFileName}`;
+      // 3. 최종 경로로 복사
+      const finalFileName = `${timestamp}_${safeName}`;
+      const finalPath = `public/${userId}/${finalFileName}`;
 
-      // Supabase Storage의 native copy 메서드 사용
+      // Supabase Storage의 native copy 메서드 사용 (v2 SDK 기준)
       const { error: copyErr } = await supabase.storage
         .from("avatars")
         .copy(tempPath, finalPath);
 
-      if (copyErr) throw copyErr;
+      if (copyErr) {
+        // 일부 환경에서는 copy가 지원되지 않을 수 있으므로 fallback: download + upload
+        console.warn("copy failed, trying fallback:", copyErr.message || copyErr);
+        // 다운로드 후 다시 업로드 (간단한 fallback)
+        const { data: downloadData, error: downloadErr } = await supabase.storage.from("avatars").download(tempPath);
+        if (downloadErr || !downloadData) throw downloadErr || new Error("임시 파일 다운로드 실패");
+        const blob = await downloadData.arrayBuffer();
+        const fallbackFile = new File([blob], finalFileName, { type: file.type });
+        const { error: fallbackUploadErr } = await supabase.storage.from("avatars").upload(finalPath, fallbackFile, { upsert: true });
+        if (fallbackUploadErr) throw fallbackUploadErr;
+      }
 
-      console.log("최종 파일 복사 완료:", finalPath);
+      console.log("최종 파일 생성 완료:", finalPath);
 
-      // 4. 임시 파일 삭제
-      await supabase.storage.from("avatars").remove([tempPath]);
-      console.log("임시 파일 삭제 완료:", tempPath);
+      // 4. 임시 파일 삭제 (user temp 하위)
+      try {
+        await supabase.storage.from("avatars").remove([tempPath]);
+        console.log("임시 파일 삭제 완료:", tempPath);
+      } catch (removeErr) {
+        console.warn("임시 파일 삭제 실패:", removeErr);
+      }
 
       // 5. 퍼블릭 URL 얻기
       const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(finalPath);
@@ -83,16 +121,15 @@ export default function AvatarUploader({ onUploaded, className, currentAvatarUrl
     }
   };
 
-  // 파일 처리 함수
-  const processUploadedFile = async (tempPath: string): Promise<void> => {
+  // 파일 처리 함수: temp/{userId} 내부에 tempFileName 존재 여부 확인
+  const processUploadedFile = async (userId: string, tempFileName: string): Promise<void> => {
     try {
-      // 현재는 간단한 검증만 수행
-      // 향후 이미지 리사이즈, 최적화, 형식 변환 등 추가 가능
-      console.log("파일 처리 중:", tempPath);
+      console.log("파일 처리 중:", `temp/${userId}/${tempFileName}`);
 
-      // 임시 파일 존재 확인
-      const { data: files } = await supabase.storage.from("avatars").list("temp");
-      const tempFileExists = files?.some(file => file.name === tempPath.split('/')[1]);
+      const { data: files, error: listErr } = await supabase.storage.from("avatars").list(`temp/${userId}`);
+      if (listErr) throw listErr;
+
+      const tempFileExists = files?.some(file => file.name === tempFileName);
 
       if (!tempFileExists) {
         throw new Error("임시 파일이 존재하지 않습니다");
