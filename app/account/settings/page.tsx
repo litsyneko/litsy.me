@@ -58,18 +58,32 @@ export default function AccountSettingsPage() {
       const p = (user?.identities?.[0]?.provider || user?.app_metadata?.provider || "EMAIL").toUpperCase();
       setProvider(p);
       if (user?.id) {
-        // 프로필 테이블에서 정보 가져오기
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("display_name, avatar_url")
-          .eq("id", user.id)
-          .maybeSingle();
-        
-        // auth user metadata에서 display_name 가져오기 (프로필 테이블에 없을 경우 대비)
+        // Auth user metadata를 우선적으로 사용 (프로필 테이블 대신)
         const displayNameFromAuth = user.user_metadata?.display_name;
-        
-        setDisplayName(prof?.display_name || displayNameFromAuth || "");
-        setAvatarUrl(prof?.avatar_url ?? null);
+        const avatarUrlFromAuth = user.user_metadata?.avatar_url;
+
+        // 프로필 테이블이 있을 경우 대비해 두 번째로 시도
+        let displayName = displayNameFromAuth || "";
+        let avatarUrl = avatarUrlFromAuth || null;
+
+        try {
+          // 프로필 테이블에서 정보 가져오기 (테이블이 없는 경우엔 오류 발생하지만 무시)
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("display_name, avatar_url")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          // Auth metadata가 없을 경우 테이블 값을 사용
+          if (!displayName && prof?.display_name) displayName = prof.display_name;
+          if (!avatarUrl && prof?.avatar_url) avatarUrl = prof.avatar_url;
+        } catch (error) {
+          // 프로필 테이블이 없거나 접근 오류가 발생해도 무시하고 Auth metadata만 사용
+          console.log("프로필 테이블 접근 오류:", error);
+        }
+
+        setDisplayName(displayName);
+        setAvatarUrl(avatarUrl);
       }
       setLoading(false);
     })();
@@ -86,20 +100,20 @@ export default function AccountSettingsPage() {
     const user = data.user;
     if (!user) return;
     
-    // 프로필 테이블 업데이트
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .upsert({ id: user.id, display_name: displayName.trim() });
-    
+    // 프로필 테이블 업데이트 (임시 주석 처리 - 테이블이 존재하지 않을 수 있음)
+    // const { error: profileError } = await supabase
+    //   .from("profiles")
+    //   .upsert({ id: user.id, display_name: displayName.trim() });
+
     // Auth user metadata 업데이트
-    const { error: authError } = await supabase.auth.updateUser({ 
-      data: { display_name: displayName.trim() } 
+    const { error: authError } = await supabase.auth.updateUser({
+      data: { display_name: displayName.trim() }
     });
-    
+
     setSavingProfile(false);
-    
-    if (profileError || authError) {
-      setMessage(`오류: ${profileError?.message || authError?.message}`);
+
+    if (authError) {
+      setMessage(`Auth 오류: ${authError.message}`);
     } else {
       setMessage("프로필이 저장되었습니다.");
     }
@@ -109,9 +123,21 @@ export default function AccountSettingsPage() {
     const { data } = await supabase.auth.getUser();
     const user = data.user;
     if (!user) return;
-    const { error } = await supabase.from("profiles").upsert({ id: user.id, avatar_url: url });
-    if (!error) setAvatarUrl(url);
-    setMessage(error ? error.message : "아바타가 업데이트되었습니다.");
+
+    // 프로필 테이블 대신 Auth user metadata에 저장 (임시 주석 처리)
+    // const { error } = await supabase.from("profiles").upsert({ id: user.id, avatar_url: url });
+
+    // Auth user metadata에 avatar_url 저장
+    const { error: authError } = await supabase.auth.updateUser({
+      data: { avatar_url: url }
+    });
+
+    if (!authError) {
+      setAvatarUrl(url);
+      setMessage("아바타가 업데이트되었습니다.");
+    } else {
+      setMessage(`Auth 오류: ${authError.message}`);
+    }
   };
 
   const onUpdateEmail = async () => {
