@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import Image from "next/image";
 
 type Props = {
   onUploaded?: (publicUrl: string, path: string) => void;
@@ -28,8 +29,8 @@ export default function AvatarUploader({ onUploaded, className, currentAvatarUrl
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       setUrl(data.publicUrl);
       onUploaded?.(data.publicUrl, path);
-    } catch (err: any) {
-      setError(err.message || "업로드 실패");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "업로드 실패");
     } finally {
       setUploading(false);
     }
@@ -40,7 +41,7 @@ export default function AvatarUploader({ onUploaded, className, currentAvatarUrl
       <div className="flex flex-col items-center gap-3">
         <div className="flex items-center gap-3">
           {(url || currentAvatarUrl) ? (
-            <img src={url ?? currentAvatarUrl ?? ''} alt={displayName ?? 'avatar'} className="h-20 w-20 rounded-full object-cover" />
+            <Image src={url ?? currentAvatarUrl ?? ''} alt={displayName ?? 'avatar'} width={80} height={80} className="h-20 w-20 rounded-full object-cover" />
           ) : (
             <div className="h-20 w-20 rounded-full bg-white/5 flex items-center justify-center text-sm text-gray-300">No image</div>
           )}

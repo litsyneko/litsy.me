@@ -14,21 +14,19 @@ export default function SkillCard({
   tech: Tech;
   index: number;
   globalMousePosition: { x: number; y: number };
-  skillsRef: React.RefObject<HTMLDivElement>;
+  skillsRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const tilt = useMemo(() => {
     if (!cardRef.current || !skillsRef.current) return { rx: 0, ry: 0 };
     const rect = cardRef.current.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
     const dx = globalMousePosition.x - (rect.left - skillsRef.current.getBoundingClientRect().left) - rect.width / 2;
     const dy = globalMousePosition.y - (rect.top - skillsRef.current.getBoundingClientRect().top) - rect.height / 2;
     const rx = (-dy / (rect.height / 2)) * 6; // rotateX
     const ry = (dx / (rect.width / 2)) * 6; // rotateY
     return { rx: isFinite(rx) ? rx : 0, ry: isFinite(ry) ? ry : 0 };
-  }, [globalMousePosition, skillsRef.current]);
+  }, [globalMousePosition, skillsRef]);
 
   return (
     <motion.div

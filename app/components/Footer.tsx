@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { FiMail, FiGithub, FiGlobe } from "react-icons/fi";
 
 export default function Footer() {
@@ -12,9 +13,9 @@ export default function Footer() {
           <a href="https://github.com" target="_blank" rel="noreferrer" className="p-2 rounded-md hover:bg-white/5">
             <FiGithub />
           </a>
-          <a href="/" className="p-2 rounded-md hover:bg-white/5">
+          <Link href="/" className="p-2 rounded-md hover:bg-white/5">
             <FiGlobe />
-          </a>
+          </Link>
         </div>
       </div>
     </footer>

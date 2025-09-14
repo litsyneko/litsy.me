@@ -51,7 +51,7 @@ export default function AuthProfileSync() {
         }
 
         // Mirror into auth metadata for convenience
-        const metaUpdates: Record<string, any> = {};
+        const metaUpdates: Partial<UserMetadata> = {};
         if (displayName && user.user_metadata?.display_name !== displayName) metaUpdates.display_name = displayName;
         if (avatarUrl && user.user_metadata?.avatar_url !== avatarUrl) metaUpdates.avatar_url = avatarUrl;
         if (Object.keys(metaUpdates).length) await supabase.auth.updateUser({ data: metaUpdates });

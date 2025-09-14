@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/app/components/ui/button";
-import { ChevronDown, Code, Sparkles } from "lucide-react";
+import { Code, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import SkillCard from "@/app/components/SkillCard";
