@@ -191,10 +191,10 @@ export default function AccountSettingsPage() {
   if (loading) return null;
 
   return (
-    <section className="px-4 sm:px-6 pt-12 pb-16">
+    <section className="px-4 sm:px-6 pt-32 pb-16">
       <div className="mx-auto max-w-4xl">
         {/* Header */}
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 glass-effect rounded-2xl p-4 md:p-6 hover-glow transition-all duration-300">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 glass-effect rounded-2xl p-4 md:p-6 hover-glow transition-all duration-300 border border-gray-200/20 dark:border-white/10">
           <div className="flex items-center gap-4 min-w-0">
             <div className="h-16 w-16 rounded-2xl overflow-hidden ring-2 ring-primary/20 shadow-lg">
               {avatarUrl ? (
@@ -220,10 +220,6 @@ export default function AccountSettingsPage() {
             <span className="font-medium">{providerLabel}</span>
             <span>·</span>
             <span className="truncate max-w-[180px]">{email || "-"}</span>
-            <div className="ml-3 text-xs text-muted-foreground">
-              <div>계정 생성: {createdAt ? new Date(createdAt).toLocaleString() : "-"}</div>
-              <div>최근 로그인: {lastSignIn ? new Date(lastSignIn).toLocaleString() : "-"}</div>
-            </div>
           </div>
         </div>
 
@@ -248,9 +244,13 @@ export default function AccountSettingsPage() {
 
         {/* Panels */}
         {active === "profile" && (
-          <section className="rounded-3xl p-6 md:p-8 glass-effect border border-primary/20 shadow-xl ring-1 ring-primary/10 hover:ring-primary/30 transition-all duration-300 hover-lift">
+          <section className="rounded-3xl p-6 md:p-8 glass-effect border border-gray-200/20 dark:border-white/10 shadow-xl ring-1 ring-primary/10 hover:ring-primary/30 transition-all duration-300 hover-lift">
             <h2 className="text-lg font-semibold tracking-tight mb-1 flex items-center gap-2"><User className="w-4 h-4" /> 프로필</h2>
-            <p className="text-sm text-muted-foreground mb-4">프로필 이미지와 표시 이름을 설정하세요.</p>
+            <p className="text-sm text-muted-foreground mb-2">프로필 이미지와 표시 이름을 설정하세요.</p>
+            <div className="text-xs text-muted-foreground mb-4">
+              <div>계정 생성: {createdAt ? new Date(createdAt).toLocaleString() : "-"}</div>
+              <div>최근 로그인: {lastSignIn ? new Date(lastSignIn).toLocaleString() : "-"}</div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
               <div>
                 <AvatarUploader onUploaded={onAvatarUploaded} />
@@ -275,7 +275,7 @@ export default function AccountSettingsPage() {
         )}
 
         {active === "account" && (
-          <section className="rounded-3xl p-6 md:p-8 glass-effect border border-primary/20 shadow-xl ring-1 ring-primary/10 hover:ring-primary/30 transition-all duration-300 hover-lift">
+          <section className="rounded-3xl p-6 md:p-8 glass-effect border border-gray-200/20 dark:border-white/10 shadow-xl ring-1 ring-primary/10 hover:ring-primary/30 transition-all duration-300 hover-lift">
             <h2 className="text-lg font-semibold tracking-tight mb-1 flex items-center gap-2"><Mail className="w-4 h-4" /> 이메일</h2>
             <p className="text-sm text-muted-foreground mb-4">새 이메일로 변경 시 인증 메일이 전송됩니다.</p>
             <div className="space-y-4">
