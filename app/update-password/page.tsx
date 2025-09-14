@@ -170,11 +170,20 @@ export default function UpdatePasswordPage() {
         <div className="space-y-4 text-center w-full max-w-lg mx-auto">
           <h2 className="text-2xl font-bold">오류</h2>
           <p className="text-base text-muted-foreground max-w-prose mx-auto">
-            죄송합니다. 직접연결로 접속하신걸로 확인되었습니다.
+            정상적인 경로로 접속되지 않은 것으로 확인되었습니다.
           </p>
           <p className="text-base text-muted-foreground max-w-prose mx-auto">
-            이것이 문제가 있는 기술이라 판단되면 문의해 주세요.
+            서비스 이용에 불편을 드려 죄송합니다. 문제가 계속되면 문의해 주세요.
           </p>
+          <div className="flex justify-center mt-4">
+            <Button
+              onClick={() => router.replace("/login")}
+              className="px-6 py-3 text-sm font-medium rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-primary/60"
+              aria-label="로그인 페이지로 이동"
+            >
+              로그인 하러가기
+            </Button>
+          </div>
         </div>
       ) : isOAuth ? (
         <div
