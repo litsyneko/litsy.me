@@ -281,12 +281,13 @@ html, body, #__next {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #8b5cf6, #ec4899);
+  background: linear-gradient(to bottom, #a99eff, #9eaeff, #e6eaff);
   border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.03);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #7c3aed, #db2777);
+  background: linear-gradient(to bottom, #9eaeff, #8fa8ff, #dfe8ff);
 }
 
 /* Smooth global color transitions (can be disabled during theme change) */
