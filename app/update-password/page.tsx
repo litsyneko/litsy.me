@@ -16,6 +16,7 @@ export default function UpdatePasswordPage() {
 
   // If the user landed here from the email link, ensure we have a session.
   const [ready, setReady] = useState(false);
+  const [isOAuth, setIsOAuth] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -105,13 +106,15 @@ export default function UpdatePasswordPage() {
           const u = userData?.user;
           const prov = (u?.identities?.[0]?.provider || u?.app_metadata?.provider || "EMAIL").toUpperCase();
           if (prov !== "EMAIL") {
-            const msg = "오류: 이 계정은 OAuth 공급자로 생성된 계정입니다. 비밀번호 재설정이 불가능합니다. 해당 공급자로 로그인해 주세요.";
-            // show error toast (clear "오류:" prefix for title/description)
-            toast.show({ title: "오류", description: msg.replace(/^오류:\s*/, ""), variant: "error", duration: 6000 });
-            // suppress inline page message so the toast is the primary error indicator
+            const msg = "이 계정은 OAuth 공급자로 생성된 계정입니다. 비밀번호 재설정을 이용할 수 없습니다. 해당 공급자로 로그인해 주세요.";
+            // show prominent error toast
+            toast.show({ title: "OAuth 계정", description: msg, variant: "error", duration: 6000 });
+            // mark oauth and prevent password form from showing
+            setIsOAuth(true);
             setMessage(null);
             setReady(false);
           } else {
+            setIsOAuth(false);
             setReady(true);
           }
         } else {
@@ -145,26 +148,47 @@ export default function UpdatePasswordPage() {
 
   return (
     <AuthCard title="새 비밀번호 설정" subtitle="메일 링크를 통해 접속하셨다면 비밀번호를 변경하세요.">
-      <div className="space-y-3">
-        <input
-          type="password"
-          placeholder="새 비밀번호"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm"
-        />
-        <input
-          type="password"
-          placeholder="새 비밀번호 확인"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm"
-        />
-        <Button className="w-full" onClick={onChangePassword} disabled={loading || !password || !confirm}>
-          {loading ? "변경 중..." : "비밀번호 변경"}
-        </Button>
-        {message && <p className="text-xs text-muted-foreground">{message}</p>}
-      </div>
+      {isOAuth ? (
+        <div className="space-y-4 text-center">
+          <p className="text-lg font-semibold">OAuth 계정입니다</p>
+          <p className="text-sm text-muted-foreground">
+            이 계정은 소셜 로그인을 통해 생성된 계정이므로 비밀번호 재설정을 사용할 수 없습니다.
+            해당 공급자(예: GitHub, Discord)로 로그인해 주세요.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-4">
+            <Button onClick={() => router.replace("/login")} className="px-6 py-2">
+              로그인 하러가기
+            </Button>
+            <Button variant="outline" onClick={() => router.replace("/account/settings")} className="px-6 py-2">
+              계정 설정으로 이동
+            </Button>
+          </div>
+
+          {message && <p className="text-xs text-muted-foreground mt-2">{message}</p>}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <input
+            type="password"
+            placeholder="새 비밀번호"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm"
+          />
+          <input
+            type="password"
+            placeholder="새 비밀번호 확인"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm"
+          />
+          <Button className="w-full" onClick={onChangePassword} disabled={loading || !password || !confirm}>
+            {loading ? "변경 중..." : "비밀번호 변경"}
+          </Button>
+          {message && <p className="text-xs text-muted-foreground">{message}</p>}
+        </div>
+      )}
     </AuthCard>
   );
 }
