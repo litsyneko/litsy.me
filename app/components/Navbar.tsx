@@ -95,7 +95,8 @@ export default function Navbar() {
     { href: "/", label: "홈" },
     { href: "/about", label: "소개" },
     { href: "/projects", label: "프로젝트" },
-    { href: "/blog", label: "블로그" },
+    { href: "/post", label: "블로그" },
+    { href: "/my/posts", label: "내 게시글" },
   ];
 
   return (
@@ -181,7 +182,7 @@ export default function Navbar() {
                 {mounted ? (theme === "dark" ? <FiSun size={18} /> : <FiMoon size={18} />) : <span className="w-4 h-4 inline-block" />}
               </button>
 
-              <a href="https://github.com" target="_blank" rel="noreferrer" className="p-2 rounded-md hover:bg-white/5">
+              <a href="https://github.com/litsyneko" target="_blank" rel="noreferrer" className="p-2 rounded-md hover:bg-white/5">
                 <FiGithub size={18} />
               </a>
               <a href="https://twitter.com" target="_blank" rel="noreferrer" className="p-2 rounded-md hover:bg-white/5">
@@ -254,7 +255,7 @@ export default function Navbar() {
                   </button>
                 </div>
                 <div className="flex items-center gap-2 px-1 pb-2">
-                  <a href="https://github.com" target="_blank" rel="noreferrer" className="p-2 rounded-md hover:bg-white/5">
+                  <a href="https://github.com/litsyneko" target="_blank" rel="noreferrer" className="p-2 rounded-md hover:bg-white/5">
                     <FiGithub size={18} />
                   </a>
                   <a href="https://twitter.com" target="_blank" rel="noreferrer" className="p-2 rounded-md hover:bg-white/5">
