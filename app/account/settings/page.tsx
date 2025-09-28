@@ -471,12 +471,27 @@ export default function AccountSettingsPage() {
         </div>
 
         {message && (
-          <div className={`mt-4 p-4 rounded-xl text-sm font-medium ${
+          <div className={`mt-6 p-6 rounded-2xl text-base font-semibold shadow-lg border-2 animate-in slide-in-from-top-2 duration-300 ${
             message.includes("오류") || message.includes("실패") || message.includes("일치하지")
-              ? "bg-destructive/10 border border-destructive/20 text-destructive"
-              : "bg-green-500/10 border border-green-500/20 text-green-600"
+              ? "bg-red-500/10 border-red-500/30 text-red-600 dark:bg-red-500/20 dark:border-red-500/40"
+              : "bg-green-500/10 border-green-500/30 text-green-600 dark:bg-green-500/20 dark:border-green-500/40"
           }`}>
-            {message}
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                message.includes("오류") || message.includes("실패") || message.includes("일치하지")
+                  ? "bg-red-500/20"
+                  : "bg-green-500/20"
+              }`}>
+                {message.includes("오류") || message.includes("실패") || message.includes("일치하지") ? (
+                  <Shield className="w-4 h-4 text-red-600" />
+                ) : (
+                  <User className="w-4 h-4 text-green-600" />
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="text-lg">{message}</p>
+              </div>
+            </div>
           </div>
         )}
       </div>
