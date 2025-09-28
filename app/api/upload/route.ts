@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       .from("blog-images")
       .upload(fileName, file, {
         cacheControl: "3600",
-        upsert: false,
+        upsert: true, // Allow overwriting existing files
       });
 
     if (error) {
