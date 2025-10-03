@@ -13,4 +13,3 @@ export const brand = {
 } as const;
 
 export type Brand = typeof brand;
-

@@ -45,4 +45,3 @@ export default function SkillCard({
     </motion.div>
   );
 }
-

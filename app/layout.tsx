@@ -63,6 +63,7 @@ export const metadata: Metadata = {
     images: ['https://litsy.me/images/profile.png'],
     creator: '@litsyn',
   },
+    generator: 'v0.app'
 };
 
 export default function RootLayout({
